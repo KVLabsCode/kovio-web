@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
@@ -8,6 +8,26 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [finishing, setFinishing] = useState(false);
+
+  // If a magic-link code lands here (Supabase can fall back to the Site URL,
+  // and the auth proxy then forwards `/` → `/login` carrying the query string),
+  // hand it off to the callback route that actually exchanges it for a session.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code) {
+      setFinishing(true);
+      window.location.replace(`/auth/callback?code=${encodeURIComponent(code)}`);
+    }
+  }, []);
+
+  if (finishing) {
+    return (
+      <div className="mx-auto mt-24 max-w-sm px-4 text-sm text-gray-600">
+        Signing you in…
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
