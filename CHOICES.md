@@ -79,3 +79,17 @@ decisions, deviations, and what still needs a human.
 
 - Vercel URL: **not deployed yet** (see above).
 - `app.kovio.dev`: **pending** Vercel deploy + DNS.
+
+---
+
+## Redesign (marketing aesthetic) — decisions & deviations
+
+- **Tailwind v4, not v3.** The prompt's Step 1/2 assumed a `tailwind.config.ts` with `theme.extend`. This project is on Tailwind **v4** (CSS-based). Tokens were ported to `@theme` in `app/globals.css` (same color/font/font-size names → same utilities: `bg-page`, `text-ink`, `text-display`, `font-serif`, etc.). No config file exists or is needed.
+- **Font variable names.** next/font uses `--font-sans-src` / `--font-serif-src` / `--font-mono-src`; `@theme` maps the semantic tokens to them with fallbacks (avoids a self-referential `var(--font-sans)` cycle).
+- **Client pages → server shell + client island.** `AppShell`/`Sidebar` are async server components, so client pages can't import them directly. `/campaigns/new` and `/deposit` are server pages that render `AppShell` + a client island (`NewCampaignForm`, `DepositForm`). `/login` and `/onboarding` stay shell-less client pages.
+- **OEM onboarding disabled.** The "Fleet operator" choice is shown but disabled ("coming soon") — there's no OEM onboarding endpoint and the spec forbids new frontend endpoints. Only the Brand (advertiser) path calls `apiClient.onboard`.
+- **Range pills are presentational.** `?range=` updates the URL but the `/dashboard` endpoint doesn't filter by range yet, so the data is unchanged. Wire when the backend accepts a range param.
+- **Placeholder metrics (show `—` + TODO):** engagement rate, QR scans, avg dwell, environment mix, and multi-day chart history — none are in the current `/advertiser/v1/dashboard` response. Sparklines/charts use the last ~10 `recent_impressions` grouped by day, so they fill in as data accrues.
+- **Live activity feed** maps `recent_impressions` (no per-event location/time in the API, so location shows "Across active fleet").
+- **Sidebar bid-balance %** = spent_30d / (spent_30d + balance) — an approximation until a true budget figure is exposed.
+- **Deploy:** via `git push` → Vercel Git integration (the Vercel CLI can't auth from this sandbox — keychain isolation), not `vercel --prod`.
