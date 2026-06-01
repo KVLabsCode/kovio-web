@@ -7,27 +7,30 @@ export default async function Home() {
   if (error?.status === 404) redirect('/onboarding');
   if (!error && data) redirect('/dashboard');
 
-  // Authenticated (proxy let us through) but the API rejected the session.
-  // Render an error rather than redirect to /login, which would loop with the proxy.
+  // We have a Supabase session (the proxy let us reach here) but the API
+  // rejected it — almost always a backend JWT-secret mismatch — or is
+  // unreachable. Do NOT redirect to /login here: the proxy bounces an
+  // authenticated user /login → / which would create an infinite loop
+  // (ERR_TOO_MANY_REDIRECTS). Show an escape hatch instead.
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="font-mono text-xs uppercase tracking-wider text-ink-3">Kovio</div>
-        <h1 className="mt-6 font-serif text-h2 text-ink">Can’t load your account</h1>
-        <p className="mt-2 text-sm text-ink-2">
-          You’re signed in, but the Kovio API rejected your session
-          {error?.status ? ` (HTTP ${error.status}${error.code ? ` · ${error.code}` : ''})` : ''}.
-          This is almost always a server configuration issue, not your account.
-        </p>
-        <form action="/auth/logout" method="post" className="mt-4">
-          <button
-            type="submit"
-            className="rounded-md border border-border-soft px-4 py-2.5 text-sm text-ink-2 transition-colors hover:text-ink"
-          >
-            Sign out
-          </button>
-        </form>
-      </div>
+    <div className="mx-auto max-w-md space-y-4">
+      <h1 className="text-xl font-bold">Can’t load your account</h1>
+      <p className="text-sm text-gray-600">
+        You’re signed in, but the Kovio API rejected your session
+        {error?.status
+          ? ` (HTTP ${error.status}${error.code ? ` · ${error.code}` : ''})`
+          : ''}
+        . This is almost always a server configuration issue (JWT secret), not
+        your account. Try again shortly, or sign out and back in.
+      </p>
+      <form action="/auth/logout" method="post">
+        <button
+          type="submit"
+          className="rounded border border-gray-300 px-3 py-2 text-sm font-medium"
+        >
+          Sign out
+        </button>
+      </form>
     </div>
   );
 }

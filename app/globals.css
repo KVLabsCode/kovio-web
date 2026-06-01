@@ -1,54 +1,26 @@
 @import "tailwindcss";
 
-/* Tailwind v4 design tokens (the CSS-native equivalent of the prompt's
-   tailwind.config theme.extend). next/font sets --font-*-src variables; we map
-   the semantic font tokens to them with fallbacks. */
-@theme {
-  --color-page: #f2ecdc;
-  --color-card: #f5efe3;
-  --color-card-hover: #efe9dd;
-  --color-border-soft: #d4c9af;
-  --color-border-mid: #b8a988;
-  --color-ink: #1c1a18;
-  --color-ink-2: #5f574a;
-  --color-ink-3: #8a7f6f;
-  --color-rust: #c57a3f;
-  --color-rust-dark: #9f5e2a;
-  --color-rust-soft: #e8c9a5;
-  --color-navy: #3d6cb3;
-  --color-navy-soft: #c8d5e8;
-  --color-success: #4a7548;
-  --color-danger: #b04535;
-
-  --font-sans: var(--font-sans-src), system-ui, sans-serif;
-  --font-serif: var(--font-serif-src), Georgia, serif;
-  --font-mono: var(--font-mono-src), ui-monospace, monospace;
-
-  --text-display: 56px;
-  --text-display--line-height: 1.05;
-  --text-display--letter-spacing: -0.02em;
-  --text-h1: 40px;
-  --text-h1--line-height: 1.1;
-  --text-h1--letter-spacing: -0.015em;
-  --text-h2: 28px;
-  --text-h2--line-height: 1.2;
-  --text-h2--letter-spacing: -0.01em;
-  --text-metric: 44px;
-  --text-metric--line-height: 1;
-  --text-metric--letter-spacing: -0.02em;
-  --text-label: 11px;
-  --text-label--line-height: 1.4;
-  --text-label--letter-spacing: 0.08em;
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
-@layer base {
-  body {
-    background: #f2ecdc;
-    color: #1c1a18;
-    -webkit-font-smoothing: antialiased;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
   }
-  ::selection {
-    background: #c57a3f;
-    color: #f2ecdc;
-  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
