@@ -92,3 +92,105 @@ export interface ApiError {
 }
 
 export type Result<T> = { data: T | null; error: ApiError | null };
+
+// --- OEM portal ---------------------------------------------------------------
+export interface OemOrg {
+  id: string;
+  name: string;
+  slug: string;
+  kind: string;
+  pending_payout_cents: number;
+  lifetime_payout_cents: number;
+  stripe_connect_id: string | null;
+  created_at: string;
+}
+
+export interface OemMeResponse {
+  user: AdvertiserUser;
+  org: OemOrg;
+}
+
+export interface OemDayStat {
+  date: string;
+  impressions: number;
+  revenue_cents: number;
+}
+
+export interface OemFleetStat {
+  fleet_id: string;
+  fleet_name: string;
+  impressions_30d: number;
+  revenue_30d_cents: number;
+}
+
+export interface OemRecentImpression {
+  id: string;
+  campaign_name: string;
+  campaign_advertiser: string;
+  fleet_name: string;
+  robot_external_id: string;
+  revenue_to_oem_cents: number;
+  timestamp: string;
+}
+
+export interface OemDashboard {
+  pending_payout_cents: number;
+  lifetime_payout_cents: number;
+  impressions_24h: number;
+  impressions_30d: number;
+  revenue_24h_cents: number;
+  revenue_30d_cents: number;
+  total_fleets: number;
+  total_robots: number;
+  active_robots: number;
+  by_day: OemDayStat[];
+  by_fleet: OemFleetStat[];
+  recent_impressions: OemRecentImpression[];
+}
+
+export interface Fleet {
+  id: string;
+  name: string;
+  region: string | null;
+  blocked_categories: string[];
+  blocked_advertisers: string[];
+  revenue_share_pct: number;
+  created_at: string;
+  robot_count?: number;
+  impressions_24h?: number;
+  revenue_24h_cents?: number;
+}
+
+export interface FleetRobot {
+  id: string;
+  external_id: string;
+  status: string;
+  last_heartbeat: string | null;
+  created_at: string;
+}
+
+export interface ApiKeyMeta {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface MintedApiKey extends ApiKeyMeta {
+  secret: string;
+}
+
+export interface FleetDetail {
+  fleet: Fleet;
+  robots: FleetRobot[];
+  api_keys: ApiKeyMeta[];
+  stats: {
+    impressions_24h: number;
+    impressions_30d: number;
+    revenue_24h_cents: number;
+    revenue_30d_cents: number;
+    by_day: OemDayStat[];
+  };
+}

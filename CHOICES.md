@@ -93,3 +93,16 @@ decisions, deviations, and what still needs a human.
 - **Live activity feed** maps `recent_impressions` (no per-event location/time in the API, so location shows "Across active fleet").
 - **Sidebar bid-balance %** = spent_30d / (spent_30d + balance) — an approximation until a true budget figure is exposed.
 - **Deploy:** via `git push` → Vercel Git integration (the Vercel CLI can't auth from this sandbox — keychain isolation), not `vercel --prod`.
+
+---
+
+## OEM portal (milestone)
+
+- **Reused the existing component library** (Sidebar, AppShell, SectionHeader, MetricCard, Pill, Chart/ChartClient, Table, LiveActivityFeed) — no new shared UI components. New client islands only for interactivity: `NewFleetForm`, `FleetApiKeys`, `FleetBrandSafety`, `FleetEditButton`.
+- **Sidebar is now kind-aware**: tries `api.me()`; on 403 `wrong_user_kind` falls through to `api.oemMe()`. Advertiser → rust avatar + Bid balance card; OEM → navy avatar + Pending payout card. Nav branches accordingly.
+- **Chart format passed as string key** (`primaryFormat="usd"`), never a function — functions can't cross the server→client boundary (that was the earlier 500). Charts loaded via `ChartClient` (ssr:false).
+- **OEM dashboard chart is single-series** (revenue only); `Chart` already supports omitting `secondaryKey`.
+- **Verified authenticated renders locally before deploying**: forged Supabase sessions (HS256, local-test-secret) for both an OEM and an advertiser user against the local API, with a temporary env-gated proxy bypass (`KOVIO_LOCAL_BYPASS_AUTH`, reverted before commit). All OEM + advertiser pages returned 200.
+- **API-key secrets**: only ever in the mint POST response; the reveal panel shows it once, then the list shows prefix-only.
+- **Cross-kind nav**: root page + sidebar route by kind. An OEM directly visiting an advertiser route still renders (empty data) rather than 403 — acceptable; the normal flows route correctly.
+- **Deploy via `git push`** (Vercel Git integration); CLI unusable from sandbox.

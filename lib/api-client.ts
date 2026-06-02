@@ -5,7 +5,14 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
-import type { Campaign, MeResponse, Result } from '@/lib/types';
+import type {
+  Campaign,
+  Fleet,
+  MeResponse,
+  MintedApiKey,
+  OemMeResponse,
+  Result,
+} from '@/lib/types';
 
 const API = process.env.NEXT_PUBLIC_KOVIO_API_URL!;
 
@@ -82,4 +89,22 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify({ amount_cents }),
     }),
+  // OEM
+  oemMe: () => call<OemMeResponse>('/oem/v1/me'),
+  oemOnboard: (body: { org_name: string; org_slug: string }) =>
+    call<OemMeResponse>('/oem/v1/onboarding', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  oemCreateFleet: (body: { name: string; region?: string }) =>
+    call<Fleet>('/oem/v1/fleets', { method: 'POST', body: JSON.stringify(body) }),
+  oemUpdateFleet: (id: string, body: Record<string, unknown>) =>
+    call<Fleet>(`/oem/v1/fleets/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  oemMintApiKey: (fleetId: string, body: { name: string }) =>
+    call<MintedApiKey>(`/oem/v1/fleets/${fleetId}/api-keys`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  oemRevokeApiKey: (fleetId: string, keyId: string) =>
+    call<null>(`/oem/v1/fleets/${fleetId}/api-keys/${keyId}`, { method: 'DELETE' }),
 };

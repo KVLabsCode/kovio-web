@@ -4,8 +4,10 @@ import { api } from '@/lib/api';
 export default async function Home() {
   const { data, error } = await api.me();
 
-  if (error?.status === 404) redirect('/onboarding');
   if (!error && data) redirect('/dashboard');
+  // An OEM hitting the advertiser /me → route to the OEM dashboard.
+  if (error?.status === 403 && error.code === 'wrong_user_kind') redirect('/oem/dashboard');
+  if (error?.status === 404) redirect('/onboarding');
 
   // Authenticated (proxy let us through) but the API rejected the session.
   // Render an error rather than redirect to /login, which would loop with the proxy.

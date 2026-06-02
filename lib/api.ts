@@ -8,7 +8,11 @@ import type {
   Campaign,
   CampaignDetail,
   Dashboard,
+  Fleet,
+  FleetDetail,
   MeResponse,
+  OemDashboard,
+  OemMeResponse,
   Result,
 } from '@/lib/types';
 
@@ -51,4 +55,10 @@ export const api = {
   dashboard: () => call<Dashboard>('/advertiser/v1/dashboard'),
   campaigns: () => call<{ campaigns: Campaign[] }>('/advertiser/v1/campaigns'),
   campaign: (id: string) => call<CampaignDetail>(`/advertiser/v1/campaigns/${id}`),
+  // OEM (server reads)
+  oemMe: () => call<OemMeResponse>('/oem/v1/me'),
+  oemDashboard: (range?: string) =>
+    call<OemDashboard>(`/oem/v1/dashboard${range ? `?range=${range}` : ''}`),
+  oemFleets: () => call<{ fleets: Fleet[] }>('/oem/v1/fleets'),
+  oemFleet: (id: string) => call<FleetDetail>(`/oem/v1/fleets/${id}`),
 };

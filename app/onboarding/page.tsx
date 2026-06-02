@@ -10,9 +10,6 @@ function slugify(s: string): string {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  // NOTE: only the "brand" (advertiser) path has a backend endpoint. "Fleet
-  // operator" is shown for parity but disabled until the OEM onboarding
-  // endpoint exists (no new frontend endpoints per spec).
   const [kind, setKind] = useState<'brand' | 'oem'>('brand');
   const [orgName, setOrgName] = useState('');
   const [orgSlug, setOrgSlug] = useState('');
@@ -29,17 +26,21 @@ export default function OnboardingPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const { error } = await apiClient.onboard({ org_name: orgName, org_slug: orgSlug });
+    const submit = kind === 'oem' ? apiClient.oemOnboard : apiClient.onboard;
+    const dest = kind === 'oem' ? '/oem/dashboard' : '/dashboard';
+    const { error } = await submit({ org_name: orgName, org_slug: orgSlug });
     if (error) {
       setLoading(false);
       if (error.code === 'slug_taken') setError('That slug is already taken — try another.');
       else if (error.code === 'already_onboarded') {
-        router.push('/dashboard');
+        // Route by whichever kind this account actually is.
+        const oem = await apiClient.oemMe();
+        router.push(oem.data ? '/oem/dashboard' : '/dashboard');
         router.refresh();
       } else setError(error.detail ?? 'Something went wrong. Please try again.');
       return;
     }
-    router.push('/dashboard');
+    router.push(dest);
     router.refresh();
   }
 
@@ -81,7 +82,7 @@ export default function OnboardingPage() {
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           {choice('brand', 'Brand', 'Run campaigns on robot fleets')}
-          {choice('oem', 'Fleet operator', "Earn revenue from your robots' screens", true)}
+          {choice('oem', 'Fleet operator', "Earn revenue from your robots' screens")}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
