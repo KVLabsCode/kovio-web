@@ -10,9 +10,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [finishing, setFinishing] = useState(false);
 
-  // If a magic-link code lands here (Supabase can fall back to the Site URL,
-  // and the auth proxy then forwards `/` → `/login` carrying the query string),
-  // hand it off to the callback route that actually exchanges it for a session.
+  // Magic-link code that lands here (Supabase Site-URL fallback + proxy forward)
+  // gets handed to the callback route that exchanges it for a session.
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code');
     if (code) {
@@ -20,14 +19,6 @@ export default function LoginPage() {
       window.location.replace(`/auth/callback?code=${encodeURIComponent(code)}`);
     }
   }, []);
-
-  if (finishing) {
-    return (
-      <div className="mx-auto mt-24 max-w-sm px-4 text-sm text-gray-600">
-        Signing you in…
-      </div>
-    );
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,34 +35,53 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto mt-24 max-w-sm px-4">
-      <h1 className="mb-1 text-2xl font-bold">Kovio</h1>
-      <p className="mb-6 text-sm text-gray-600">Advertiser portal — sign in with a magic link.</p>
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="w-full max-w-[400px]">
+        <div className="font-mono text-xs uppercase tracking-wider text-ink-3">Kovio</div>
 
-      {sent ? (
-        <div className="rounded border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Check your email — we sent a magic link to <strong>{email}</strong>. Click it to sign in.
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            required
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {loading ? 'Sending…' : 'Send magic link'}
-          </button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </form>
-      )}
+        {finishing ? (
+          <p className="mt-6 text-ink-2">Signing you in…</p>
+        ) : sent ? (
+          <div className="mt-6">
+            <h1 className="font-serif text-h2 text-ink">Check your email.</h1>
+            <p className="mt-2 text-ink-2">
+              We sent a link to <span className="text-ink">{email}</span>.
+            </p>
+            <button
+              onClick={() => {
+                setSent(false);
+                setEmail('');
+              }}
+              className="mt-4 text-sm text-rust transition-colors hover:text-rust-dark"
+            >
+              Try a different email
+            </button>
+          </div>
+        ) : (
+          <>
+            <h1 className="mt-6 font-serif text-h1 text-ink">Welcome back.</h1>
+            <p className="mt-2 text-ink-2">Sign in with a magic link sent to your email.</p>
+            <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+              <input
+                type="email"
+                required
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-md border border-border-mid bg-card px-3 py-3 text-sm text-ink transition-colors focus:border-rust focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-md bg-rust py-3 text-sm text-page transition-colors duration-200 hover:bg-rust-dark disabled:opacity-50"
+              >
+                {loading ? 'Sending…' : 'Send magic link'}
+              </button>
+              {error && <p className="text-sm text-danger">{error}</p>}
+            </form>
+          </>
+        )}
+      </div>
     </div>
   );
 }
