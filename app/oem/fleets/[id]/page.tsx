@@ -95,6 +95,39 @@ export default async function FleetDetailPage({
         />
       </div>
 
+      {/* LiDAR audience this fleet delivered (anonymous) */}
+      <div className="mt-6">
+        <div className="font-mono text-label uppercase tracking-wider text-ink-3">
+          LiDAR audience · last 28 days
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <MetricCard
+            label="REACH"
+            value={stats.audience_30d.samples > 0 ? formatCount(stats.audience_30d.avg_reach) : '—'}
+            context={stats.audience_30d.samples > 0 ? `peak ${formatCount(stats.audience_30d.peak_reach)}` : 'no samples yet'}
+          />
+          <MetricCard
+            label="ATTENTION"
+            value={
+              stats.audience_30d.avg_reach > 0
+                ? `${Math.round((stats.audience_30d.avg_attended / stats.audience_30d.avg_reach) * 100)}%`
+                : '—'
+            }
+            context="faced the screen"
+          />
+          <MetricCard
+            label="AVG DWELL"
+            value={stats.audience_30d.samples > 0 ? `${stats.audience_30d.avg_dwell_s}s` : '—'}
+            context="time in view"
+          />
+          <MetricCard
+            label="AUDIENCE SAMPLES"
+            value={formatCount(stats.audience_30d.samples)}
+            context="LiDAR ticks during ads"
+          />
+        </div>
+      </div>
+
       <div className="mt-6 rounded-lg border border-border-soft bg-card p-6">
         <h3 className="text-base text-ink">Revenue over time</h3>
         <div className="mt-1 font-mono text-label uppercase text-ink-3">Last 30 days</div>

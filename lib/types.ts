@@ -1,5 +1,9 @@
 // Shared types mirroring the kovio-api advertiser endpoints.
 
+// How a creative_url should be rendered (on the robot screen / tablet player /
+// dashboard preview). 'html' is the legacy default for bundled/external pages.
+export type CreativeType = 'image' | 'video' | 'html';
+
 export type CampaignStatus =
   | 'draft'
   | 'pending_review'
@@ -33,6 +37,7 @@ export interface Campaign {
   name: string;
   advertiser: string;
   creative_url: string;
+  creative_type: CreativeType;
   targeting: Array<Record<string, unknown>>;
   category: string | null;
   status: CampaignStatus;
@@ -57,6 +62,17 @@ export interface RecentImpression {
   timestamp: string;
 }
 
+// Anonymous LiDAR audience telemetry, aggregated over a window. Powers the
+// reach / attention / dwell / proximity panels on both dashboards.
+export interface AudienceSummary {
+  samples: number;
+  avg_reach: number;
+  peak_reach: number;
+  avg_attended: number;
+  avg_dwell_s: number;
+  nearest_m: number | null;
+}
+
 export interface Dashboard {
   balance_cents: number;
   total_campaigns: number;
@@ -66,6 +82,8 @@ export interface Dashboard {
   impressions_30d: number;
   spent_24h_cents: number;
   spent_30d_cents: number;
+  audience_24h: AudienceSummary;
+  audience_30d: AudienceSummary;
   recent_impressions: RecentImpression[];
 }
 
@@ -82,6 +100,7 @@ export interface CampaignDetail {
     spent_cents_total: number;
     remaining_cents: number;
     by_day: CampaignDayStat[];
+    audience_30d: AudienceSummary;
   };
 }
 
@@ -121,6 +140,8 @@ export interface OemFleetStat {
   fleet_name: string;
   impressions_30d: number;
   revenue_30d_cents: number;
+  avg_reach_30d: number;
+  avg_attended_30d: number;
 }
 
 export interface OemRecentImpression {
@@ -143,6 +164,8 @@ export interface OemDashboard {
   total_fleets: number;
   total_robots: number;
   active_robots: number;
+  audience_24h: AudienceSummary;
+  audience_30d: AudienceSummary;
   by_day: OemDayStat[];
   by_fleet: OemFleetStat[];
   recent_impressions: OemRecentImpression[];
@@ -192,5 +215,6 @@ export interface FleetDetail {
     revenue_24h_cents: number;
     revenue_30d_cents: number;
     by_day: OemDayStat[];
+    audience_30d: AudienceSummary;
   };
 }

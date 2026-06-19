@@ -67,6 +67,39 @@ export default async function CampaignDetailPage({
         <MetricCard label="REMAINING" value={formatMoney(stats.remaining_cents)} />
       </div>
 
+      {/* LiDAR audience this ad reached while playing (anonymous) */}
+      <div className="mt-6">
+        <div className="font-mono text-label uppercase tracking-wider text-ink-3">
+          LiDAR audience · last 28 days
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <MetricCard
+            label="REACH"
+            value={stats.audience_30d.samples > 0 ? String(stats.audience_30d.avg_reach) : '—'}
+            context={stats.audience_30d.samples > 0 ? `peak ${stats.audience_30d.peak_reach} in view` : 'no samples yet'}
+          />
+          <MetricCard
+            label="ATTENTION"
+            value={
+              stats.audience_30d.avg_reach > 0
+                ? `${Math.round((stats.audience_30d.avg_attended / stats.audience_30d.avg_reach) * 100)}%`
+                : '—'
+            }
+            context="faced the screen"
+          />
+          <MetricCard
+            label="AVG DWELL"
+            value={stats.audience_30d.samples > 0 ? `${stats.audience_30d.avg_dwell_s}s` : '—'}
+            context="time in view"
+          />
+          <MetricCard
+            label="NEAREST"
+            value={stats.audience_30d.nearest_m != null ? `${stats.audience_30d.nearest_m}m` : '—'}
+            context="closest viewer"
+          />
+        </div>
+      </div>
+
       <div className="mt-6 rounded-lg border border-border-soft bg-card p-6">
         <h3 className="text-base text-ink">Daily spend</h3>
         <div className="mt-1 font-mono text-label uppercase text-ink-3">Last 30 days</div>
@@ -85,14 +118,40 @@ export default async function CampaignDetailPage({
         <h3 className="text-base text-ink">Details</h3>
         <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
           <Detail label="Creative">
-            <a
-              href={c.creative_url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-rust transition-colors hover:text-rust-dark"
-            >
-              Open creative →
-            </a>
+            <div className="flex items-center gap-3">
+              <div className="h-16 w-24 shrink-0 overflow-hidden rounded border border-border-soft bg-black/5">
+                {c.creative_type === 'video' ? (
+                  <video
+                    src={c.creative_url}
+                    muted
+                    loop
+                    autoPlay
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                ) : c.creative_type === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.creative_url} alt="creative" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center font-mono text-[10px] uppercase text-ink-3">
+                    html
+                  </div>
+                )}
+              </div>
+              <div>
+                <span className="rounded bg-rust-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-rust-dark">
+                  {c.creative_type}
+                </span>
+                <a
+                  href={c.creative_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 block text-rust transition-colors hover:text-rust-dark"
+                >
+                  Open creative →
+                </a>
+              </div>
+            </div>
           </Detail>
           <Detail label="Targeting">{formatTargeting(c.targeting)}</Detail>
           <Detail label="Encounter cap">{c.encounter_cap_seconds}s</Detail>

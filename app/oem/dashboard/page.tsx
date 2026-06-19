@@ -126,6 +126,39 @@ export default async function OemDashboardPage({
         />
       </div>
 
+      {/* LiDAR audience — anonymous reach/attention your robots delivered */}
+      <div className="mt-10">
+        <div className="font-mono text-label uppercase tracking-wider text-ink-3">
+          LiDAR audience · last 28 days
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <MetricCard
+            label="REACH"
+            value={d.audience_30d.samples > 0 ? formatCount(d.audience_30d.avg_reach) : '—'}
+            context={d.audience_30d.samples > 0 ? `peak ${formatCount(d.audience_30d.peak_reach)} in view` : 'no samples yet'}
+          />
+          <MetricCard
+            label="ATTENTION"
+            value={
+              d.audience_30d.avg_reach > 0
+                ? `${Math.round((d.audience_30d.avg_attended / d.audience_30d.avg_reach) * 100)}%`
+                : '—'
+            }
+            context="faced the screen"
+          />
+          <MetricCard
+            label="AVG DWELL"
+            value={d.audience_30d.samples > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
+            context="time in view"
+          />
+          <MetricCard
+            label="AUDIENCE SAMPLES"
+            value={formatCount(d.audience_30d.samples)}
+            context="LiDAR ticks during ads"
+          />
+        </div>
+      </div>
+
       <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-lg border border-border-soft bg-card p-6 lg:col-span-2">
           <div className="flex items-center justify-between">
@@ -172,6 +205,7 @@ export default async function OemDashboardPage({
                     <span className="text-ink">{f.fleet_name}</span>
                     <span className="text-ink-2">
                       {formatMoney(f.revenue_30d_cents)} · {formatCount(f.impressions_30d)} imps
+                      {f.avg_reach_30d > 0 ? ` · ${formatCount(f.avg_reach_30d)} reach` : ''}
                     </span>
                   </div>
                   <div className="mt-1 h-1 w-full rounded-full bg-rust-soft">

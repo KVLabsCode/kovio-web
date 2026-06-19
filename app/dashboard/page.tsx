@@ -125,13 +125,49 @@ export default async function DashboardPage({
         <MetricCard label="ENGAGEMENT RATE" value="—" context="industry avg 2.8%" />
         {/* TODO: wire when qr_scan counts are in /advertiser/v1/dashboard response */}
         <MetricCard label="QR SCANS" value="—" context="of impressions" />
-        {/* TODO: wire when dwell duration is added to the event payload */}
-        <MetricCard label="AVG DWELL" value="—" context="weighted across buckets" />
+        <MetricCard
+          label="AVG DWELL"
+          value={d.audience_30d.samples > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
+          context="LiDAR · time in view"
+        />
         <MetricCard
           label="COST / 1K VIEWS"
           value={costPer1k != null ? formatMoney(Math.round(costPer1k)) : '—'}
           context="last 28 days"
         />
+      </div>
+
+      {/* LiDAR audience — anonymous reach/attention while ads played */}
+      <div className="mt-10">
+        <div className="font-mono text-label uppercase tracking-wider text-ink-3">
+          LiDAR audience · last 28 days
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <MetricCard
+            label="REACH"
+            value={d.audience_30d.samples > 0 ? formatCount(d.audience_30d.avg_reach) : '—'}
+            context={d.audience_30d.samples > 0 ? `peak ${formatCount(d.audience_30d.peak_reach)} in view` : 'no samples yet'}
+          />
+          <MetricCard
+            label="ATTENTION"
+            value={
+              d.audience_30d.avg_reach > 0
+                ? `${Math.round((d.audience_30d.avg_attended / d.audience_30d.avg_reach) * 100)}%`
+                : '—'
+            }
+            context={`${d.audience_30d.avg_attended} of ${d.audience_30d.avg_reach} faced screen`}
+          />
+          <MetricCard
+            label="NEAREST APPROACH"
+            value={d.audience_30d.nearest_m != null ? `${d.audience_30d.nearest_m}m` : '—'}
+            context="closest viewer"
+          />
+          <MetricCard
+            label="AUDIENCE SAMPLES"
+            value={formatCount(d.audience_30d.samples)}
+            context="LiDAR ticks during ads"
+          />
+        </div>
       </div>
 
       {/* Chart + environment */}
