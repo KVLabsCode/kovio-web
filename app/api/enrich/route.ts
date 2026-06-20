@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeUrl, extractText, BrandSchema } from '@/lib/enrich';
 
@@ -37,16 +37,16 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',
-      schema: BrandSchema,
+      output: Output.object({ schema: BrandSchema }),
       prompt:
         'You are helping an advertiser set up a robot-fleet ad campaign. ' +
         'From the website text below, identify the company. Respond with the ' +
         'company name, the best-fit category, a short catchy campaign name, and ' +
         'a one-sentence summary of what they do.\n\nWEBSITE TEXT:\n' + text,
     });
-    return Response.json(object, { status: 200 });
+    return Response.json(output, { status: 200 });
   } catch {
     return Response.json({ error: 'Could not analyze that website.' }, { status: 502 });
   }
