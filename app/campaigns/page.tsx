@@ -1,15 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatCount, formatPct } from '@/lib/format';
 import AppShell from '@/components/AppShell';
-import { SectionHeader } from '@/components/SectionHeader';
-import { Table, type Column } from '@/components/Table';
-import { Pill, statusVariant } from '@/components/Pill';
-import type { Campaign } from '@/lib/types';
-
-const btnRust =
-  'inline-flex items-center rounded-md bg-rust px-4 py-2.5 text-sm text-page transition-colors duration-200 hover:bg-rust-dark';
 
 export default async function CampaignsPage() {
   const { data, error } = await api.campaigns();
@@ -25,64 +18,97 @@ export default async function CampaignsPage() {
   }
 
   const campaigns = data.campaigns;
-  const live = campaigns.filter((c) => c.status === 'active').length;
-  const paused = campaigns.filter((c) => c.status === 'paused').length;
-  const draft = campaigns.filter((c) => c.status === 'draft').length;
-
-  const columns: Column<Campaign>[] = [
-    { key: 'name', label: 'Campaign', render: (c) => <span className="text-ink">{c.name}</span> },
-    { key: 'env', label: 'Environment', render: () => <span className="text-ink-2">All robots</span> },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (c) => <Pill variant={statusVariant(c.status)}>{c.status}</Pill>,
-    },
-    {
-      key: 'spend',
-      label: 'Spend',
-      align: 'right',
-      render: (c) => formatMoney(c.budget_spent_cents),
-    },
-    // Impressions / ER / Scans / CPE come from data not yet in the campaigns
-    // list response — placeholders until the backend exposes them.
-    { key: 'impr', label: 'Impr.', align: 'right', render: () => <span className="text-ink-3">—</span> },
-    { key: 'er', label: 'ER', align: 'right', render: () => <span className="text-ink-3">—</span> },
-    { key: 'scans', label: 'Scans', align: 'right', render: () => <span className="text-ink-3">—</span> },
-    { key: 'cpe', label: 'CPE', align: 'right', render: () => <span className="text-ink-3">—</span> },
-  ];
 
   return (
     <AppShell>
-      <SectionHeader
-        label="CAMPAIGNS"
-        greeting="Your campaigns."
-        subtitle="Manage all running, paused, and draft campaigns."
-        rightActions={
-          <Link href="/campaigns/new" className={btnRust}>
+      <div className="flex items-end justify-between mb-[34px]">
+        <div>
+          <p className="font-mono text-[13px] uppercase tracking-[0.16em] text-faint">
+            CAMPAIGNS
+          </p>
+          <h1 className="font-serif font-medium text-[54px] leading-none tracking-[-0.015em] text-ink my-[14px] mb-2">
+            Campaigns.
+          </h1>
+          <p className="text-[19px] text-muted">
+            Manage your active and past campaigns.
+          </p>
+        </div>
+        <Link
+          href="/campaigns/new"
+          className="inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+        >
+          + New campaign
+        </Link>
+      </div>
+
+      {campaigns.length === 0 ? (
+        <div className="border border-dashed border-line-strong rounded-[18px] py-16 text-center">
+          <p className="font-serif text-[32px] text-ink">No campaigns yet</p>
+          <p className="text-[18px] text-muted mt-2">
+            Your first campaign takes about two minutes.
+          </p>
+          <Link
+            href="/campaigns/new"
+            className="inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark mt-6"
+          >
             + New campaign
           </Link>
-        }
-      />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {campaigns.map((c) => (
+            <Link
+              key={c.id}
+              href={`/campaigns/${c.id}`}
+              className="flex items-center gap-[30px] bg-panel border border-line rounded-[16px] px-7 py-6 transition-colors hover:bg-panel-2"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                  <span className="font-serif text-[26px] text-ink">{c.name}</span>
+                  <span className="font-mono text-[11px] uppercase text-accent-dark bg-tint px-[9px] py-1 rounded-[20px]">
+                    {c.status}
+                  </span>
+                </div>
+                <p className="text-[14px] text-muted mt-1">
+                  {c.category ?? 'general'} · launched{' '}
+                  {new Date(c.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
 
-      <div className="mt-8">
-        {campaigns.length === 0 ? (
-          <div className="rounded-lg border border-border-soft bg-card p-10 text-center">
-            <h3 className="font-serif text-h2 text-ink">No campaigns yet</h3>
-            <p className="mt-2 text-ink-2">Your first campaign takes about two minutes.</p>
-            <Link href="/campaigns/new" className={`${btnRust} mt-6`}>
-              + New campaign
+              <div className="text-right">
+                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+                  IMPRESSIONS
+                </p>
+                <p className="text-[22px] font-semibold text-ink mt-1">
+                  {formatCount(c.impressions_total ?? 0)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+                  SPENT
+                </p>
+                <p className="text-[22px] font-semibold text-ink mt-1">
+                  {formatMoney(c.budget_spent_cents)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+                  ATTENTION
+                </p>
+                <p className="text-[22px] font-semibold text-ink mt-1">
+                  {c.attention_rate != null ? formatPct(c.attention_rate) : '—'}
+                </p>
+              </div>
             </Link>
-          </div>
-        ) : (
-          <Table
-            columns={columns}
-            rows={campaigns}
-            caption="Your campaigns"
-            meta={`${campaigns.length} total · ${live} live · ${paused} paused · ${draft} draft`}
-            rowHref={(c) => `/campaigns/${c.id}`}
-          />
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </AppShell>
   );
 }

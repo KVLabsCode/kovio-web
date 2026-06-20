@@ -3,12 +3,17 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+type Mode = 'signin' | 'signup';
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [finishing, setFinishing] = useState(false);
+
+  const isSignup = mode === 'signup';
 
   // Magic-link code that lands here (Supabase Site-URL fallback + proxy forward)
   // gets handed to the callback route that exchanges it for a session.
@@ -20,6 +25,12 @@ export default function LoginPage() {
     }
   }, []);
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError('');
+    setSent(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -27,11 +38,23 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // Sign in must not silently create an account; sign up creates one.
+        shouldCreateUser: isSignup,
+      },
     });
     setLoading(false);
-    if (error) setError(error.message);
-    else setSent(true);
+    if (error) {
+      // shouldCreateUser:false on an unknown email surfaces here — point them at sign up.
+      if (!isSignup && /signups? not allowed|user not found|not exist/i.test(error.message)) {
+        setError('No Kovio account with that email. Try signing up instead.');
+      } else {
+        setError(error.message);
+      }
+    } else {
+      setSent(true);
+    }
   }
 
   async function handleGoogle() {
@@ -57,7 +80,8 @@ export default function LoginPage() {
           <div className="mt-6">
             <h1 className="font-serif text-h2 text-ink">Check your email.</h1>
             <p className="mt-2 text-ink-2">
-              We sent a link to <span className="text-ink">{email}</span>.
+              We sent a {isSignup ? 'sign-up' : 'sign-in'} link to{' '}
+              <span className="text-ink">{email}</span>.
             </p>
             <button
               onClick={() => {
@@ -71,8 +95,12 @@ export default function LoginPage() {
           </div>
         ) : (
           <>
-            <h1 className="mt-6 font-serif text-h1 text-ink">Welcome back.</h1>
-            <p className="mt-2 text-ink-2">Sign in to continue.</p>
+            <h1 className="mt-6 font-serif text-h1 text-ink">
+              {isSignup ? 'Create your account.' : 'Welcome back.'}
+            </h1>
+            <p className="mt-2 text-ink-2">
+              {isSignup ? 'Start advertising on Kovio.' : 'Sign in to continue.'}
+            </p>
 
             <button
               type="button"
@@ -120,10 +148,21 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full rounded-md bg-rust py-3 text-sm text-page transition-colors duration-200 hover:bg-rust-dark disabled:opacity-50"
               >
-                {loading ? 'Sending…' : 'Send magic link'}
+                {loading ? 'Sending…' : isSignup ? 'Sign up with email' : 'Send magic link'}
               </button>
               {error && <p className="text-sm text-danger">{error}</p>}
             </form>
+
+            <p className="mt-6 text-center text-sm text-ink-2">
+              {isSignup ? 'Already have an account? ' : "Don't have an account? "}
+              <button
+                type="button"
+                onClick={() => switchMode(isSignup ? 'signin' : 'signup')}
+                className="text-rust transition-colors hover:text-rust-dark"
+              >
+                {isSignup ? 'Sign in' : 'Sign up'}
+              </button>
+            </p>
           </>
         )}
       </div>

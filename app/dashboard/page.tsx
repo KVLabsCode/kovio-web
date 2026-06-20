@@ -1,54 +1,48 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatCount, formatMoney } from '@/lib/format';
+import { formatCount, formatMoney, formatPct } from '@/lib/format';
 import AppShell from '@/components/AppShell';
-import { SectionHeader } from '@/components/SectionHeader';
-import { MetricCard } from '@/components/MetricCard';
-import Chart from '@/components/ChartClient';
-import { LiveActivityFeed, type ActivityEvent } from '@/components/LiveActivityFeed';
-import type { RecentImpression } from '@/lib/types';
 
-const RANGES = ['24h', '7d', '28d', '90d'];
+const btnPrimary =
+  'inline-flex items-center rounded-[11px] bg-accent px-6 py-[15px] text-[17px] text-white transition-colors hover:bg-accent-dark';
 
-function firstName(email: string): string {
-  const local = (email.split('@')[0] || 'there').replace(/[^a-zA-Z]/g, '') || 'there';
-  return local.charAt(0).toUpperCase() + local.slice(1);
+const startSteps = [
+  {
+    n: '1',
+    title: 'Create your first campaign',
+    desc: 'Pick a name, drop a creative, launch in two minutes.',
+    link: 'Create campaign →',
+  },
+  {
+    n: '2',
+    title: 'Watch Hawkeye',
+    desc: 'See live footage of robots running your ad, with verified attention.',
+    link: 'See it live →',
+  },
+  {
+    n: '3',
+    title: 'Go paid when ready',
+    desc: 'Set your own budget and schedule after the free trial.',
+    link: 'Learn more →',
+  },
+];
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
-function greetingPrefix(): string {
-  const h = new Date().getUTCHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
-}
+export default async function DashboardPage() {
+  const [dash, camps, me] = await Promise.all([
+    api.dashboard(),
+    api.campaigns(),
+    api.me(),
+  ]);
 
-// Group last impressions into a per-day spend series (cents → dollars).
-function dailySpend(imps: RecentImpression[]) {
-  const map = new Map<string, number>();
-  for (const imp of imps) {
-    const d = imp.timestamp.slice(0, 10);
-    map.set(d, (map.get(d) ?? 0) + imp.cost_cents);
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, cents]) => ({ date, spend: cents / 100 }));
-}
-
-const btnGhost =
-  'inline-flex items-center rounded-md border border-border-soft px-4 py-2.5 text-sm text-ink-2 transition-colors duration-200 hover:text-ink';
-const btnRust =
-  'inline-flex items-center rounded-md bg-rust px-4 py-2.5 text-sm text-page transition-colors duration-200 hover:bg-rust-dark';
-
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ range?: string }>;
-}) {
-  const { range } = await searchParams;
-  const activeRange = RANGES.includes(range ?? '') ? range! : '28d';
-
-  const [dash, me, camps] = await Promise.all([api.dashboard(), api.me(), api.campaigns()]);
   if (dash.error?.status === 404) redirect('/onboarding');
   if (dash.error || !dash.data) {
     return (
@@ -60,167 +54,185 @@ export default async function DashboardPage({
     );
   }
 
-  const d = dash.data;
-  const name = firstName(me.data?.user.email ?? '');
-  const budgetTotal = (camps.data?.campaigns ?? []).reduce(
-    (sum, c) => sum + c.budget_total_cents,
-    0,
-  );
-  const series = dailySpend(d.recent_impressions);
-  const spendSpark = series.map((p) => p.spend);
-  const costPer1k =
-    d.impressions_30d > 0 ? (d.spent_30d_cents / d.impressions_30d) * 1000 : null;
-
-  const subtitle =
-    d.total_campaigns === 0
-      ? 'Your first campaign is one click away.'
-      : `${d.active_campaigns} campaign${d.active_campaigns === 1 ? '' : 's'} live · ${formatCount(
-          d.impressions_30d,
-        )} impressions in the last 28 days.`;
-
-  const activity: ActivityEvent[] = d.recent_impressions.map((imp, i) => ({
-    id: `${imp.campaign_id}-${i}`,
-    time: '·',
-    type: 'impression',
-    title: `Impression · ${imp.campaign_name}`,
-    location: 'Across active fleet',
-    value_cents: imp.cost_cents,
-  }));
+  const campaigns = camps.data?.campaigns ?? [];
+  const trialActive = campaigns.length === 0;
+  const brand = me.data?.org.name ?? 'there';
 
   return (
     <AppShell>
-      <SectionHeader
-        label="OVERVIEW · LAST 28 DAYS"
-        greeting={`${greetingPrefix()}, ${name}.`}
-        subtitle={subtitle}
-        rangePills={RANGES}
-        activePill={activeRange}
-        rightActions={
-          <>
-            <button className={btnGhost} type="button">
-              Export
-            </button>
-            <Link href="/campaigns/new" className={btnRust}>
-              + New campaign
-            </Link>
-          </>
-        }
-      />
+      {/* 1. Hero panel */}
+      <section className="mb-[26px] rounded-[18px] border border-line bg-panel-2 px-[46px] py-[44px]">
+        <h1 className="font-serif text-[56px] font-medium leading-[1.02] tracking-[-0.015em] text-ink">
+          Welcome, <em className="italic">{brand}.</em>
+        </h1>
+        {trialActive ? (
+          <p className="mb-7 mt-4 max-w-[760px] text-[20px] leading-[1.5] text-muted">
+            Your free trial covers{' '}
+            <strong className="text-ink">one campaign</strong>, no card needed.
+            Let’s get it running on robots around the city.
+          </p>
+        ) : (
+          <p className="mb-7 mt-4 max-w-[760px] text-[20px] leading-[1.5] text-muted">
+            You’re running on paid campaigns now. Spin up another whenever you’re
+            ready.
+          </p>
+        )}
+        <Link href="/campaigns/new" className={btnPrimary}>
+          {trialActive ? '+ Create your first campaign' : '+ New campaign'}
+        </Link>
+      </section>
 
-      {/* Six metric cards */}
-      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <MetricCard
-          label="SPEND"
-          value={formatMoney(d.spent_30d_cents)}
-          sparkline={spendSpark}
-          sparklineColor="rust"
-          context={budgetTotal > 0 ? `of ${formatMoney(budgetTotal)} budget` : 'no budget set'}
-        />
-        <MetricCard
-          label="IMPRESSIONS"
-          value={formatCount(d.impressions_30d)}
-          context="across active robots"
-        />
-        {/* TODO: wire when engagement rate is in /advertiser/v1/dashboard response */}
-        <MetricCard label="ENGAGEMENT RATE" value="—" context="industry avg 2.8%" />
-        {/* TODO: wire when qr_scan counts are in /advertiser/v1/dashboard response */}
-        <MetricCard label="QR SCANS" value="—" context="of impressions" />
-        <MetricCard
-          label="AVG DWELL"
-          value={d.audience_30d.samples > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
-          context="LiDAR · time in view"
-        />
-        <MetricCard
-          label="COST / 1K VIEWS"
-          value={costPer1k != null ? formatMoney(Math.round(costPer1k)) : '—'}
-          context="last 28 days"
-        />
-      </div>
+      {/* 2. Two-column grid */}
+      <div className="mb-[26px] grid grid-cols-[1.7fr_1fr] gap-[26px]">
+        {/* Left — Getting Started */}
+        <section className="rounded-[18px] border border-line bg-panel px-9 py-[34px]">
+          <div className="mb-[26px] font-mono text-[12px] uppercase tracking-[0.14em] text-faint">
+            GETTING STARTED
+          </div>
+          {startSteps.map((step, i) => (
+            <div
+              key={step.n}
+              className={`flex gap-[18px] ${i === startSteps.length - 1 ? '' : 'mb-[26px]'}`}
+            >
+              <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-tint font-mono text-[14px] text-accent-dark">
+                {step.n}
+              </div>
+              <div>
+                <div className="text-[18px] font-semibold text-ink">
+                  {step.title}
+                </div>
+                <div className="mt-0.5 text-[16px] leading-[1.45] text-muted">
+                  {step.desc}
+                </div>
+                <Link
+                  href="/campaigns/new"
+                  className="mt-1 inline-block text-[16px] text-accent"
+                >
+                  {step.link}
+                </Link>
+              </div>
+            </div>
+          ))}
+        </section>
 
-      {/* LiDAR audience — anonymous reach/attention while ads played */}
-      <div className="mt-10">
-        <div className="font-mono text-label uppercase tracking-wider text-ink-3">
-          LiDAR audience · last 28 days
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <MetricCard
-            label="REACH"
-            value={d.audience_30d.samples > 0 ? formatCount(d.audience_30d.avg_reach) : '—'}
-            context={d.audience_30d.samples > 0 ? `peak ${formatCount(d.audience_30d.peak_reach)} in view` : 'no samples yet'}
-          />
-          <MetricCard
-            label="ATTENTION"
-            value={
-              d.audience_30d.avg_reach > 0
-                ? `${Math.round((d.audience_30d.avg_attended / d.audience_30d.avg_reach) * 100)}%`
-                : '—'
-            }
-            context={`${d.audience_30d.avg_attended} of ${d.audience_30d.avg_reach} faced screen`}
-          />
-          <MetricCard
-            label="NEAREST APPROACH"
-            value={d.audience_30d.nearest_m != null ? `${d.audience_30d.nearest_m}m` : '—'}
-            context="closest viewer"
-          />
-          <MetricCard
-            label="AUDIENCE SAMPLES"
-            value={formatCount(d.audience_30d.samples)}
-            context="LiDAR ticks during ads"
-          />
-        </div>
-      </div>
-
-      {/* Chart + environment */}
-      <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-border-soft bg-card p-6 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base text-ink">Performance over time</h3>
-            <div className="flex items-center gap-3 text-xs text-ink-3">
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-rust" /> Spend ($)
+        {/* Right — Plan card */}
+        <section className="flex flex-col rounded-[18px] border border-line bg-panel-2 px-8 py-[30px]">
+          <div className="flex items-start justify-between">
+            <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-faint">
+              YOUR PLAN
+            </div>
+            {trialActive ? (
+              <span className="rounded-[20px] bg-tint px-[9px] py-1 font-mono text-[11px] text-accent-dark">
+                FREE TRIAL
               </span>
-            </div>
+            ) : (
+              <span className="rounded-[20px] bg-tint px-[9px] py-1 font-mono text-[11px] text-muted">
+                PAY AS YOU GO
+              </span>
+            )}
           </div>
-          <div className="mt-1 font-mono text-label uppercase text-ink-3">
-            Daily spend · 28 days
-          </div>
-          <div className="mt-4">
-            <Chart
-              data={series}
-              xKey="date"
-              primaryKey="spend"
-              primaryLabel="Spend"
-              primaryFormat="usd"
-            />
-          </div>
-        </div>
 
-        <div className="rounded-lg border border-border-soft bg-card p-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base text-ink">Performance by environment</h3>
-            <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" /> Live
-            </span>
-          </div>
-          <div className="mt-1 font-mono text-label uppercase text-ink-3">
-            Share of spend · scans · conversion
-          </div>
-          {/* TODO: wire when events_raw carries an environment dimension */}
-          <div className="mt-6 space-y-2">
-            <div className="h-2 w-full rounded-full bg-rust-soft">
-              <div className="h-2 w-1/4 rounded-full bg-rust" />
-            </div>
-            <p className="text-sm text-ink-3">
-              No environment data yet — first impressions land here.
-            </p>
-          </div>
-        </div>
+          {trialActive ? (
+            <>
+              <div className="mt-4 font-serif text-[42px] leading-[1.04] text-ink">
+                Your first / <br />
+                campaign, free
+              </div>
+              <p className="mb-auto mt-3 text-[15px] text-muted">
+                Launch the default citywide setup — no card needed.
+              </p>
+              <Link
+                href="/campaigns/new"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent px-6 py-[15px] text-[17px] text-white transition-colors hover:bg-accent-dark"
+              >
+                + Launch free campaign
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="mt-4 font-serif text-[42px] leading-[1.04] text-ink">
+                Pay per / <br />
+                campaign
+              </div>
+              <p className="mb-auto mt-3 text-[15px] text-muted">
+                Set a budget per campaign — only pay for what runs.
+              </p>
+              <Link
+                href="/campaigns/new"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent px-6 py-[15px] text-[17px] text-white transition-colors hover:bg-accent-dark"
+              >
+                + New paid campaign
+              </Link>
+            </>
+          )}
+        </section>
       </div>
 
-      {/* Live activity */}
-      <div className="mt-6">
-        <LiveActivityFeed events={activity.slice(0, 10)} />
-      </div>
+      {/* 3. Campaigns area */}
+      {campaigns.length === 0 ? (
+        <section className="rounded-[18px] border border-dashed border-line-strong py-16 text-center">
+          <div className="font-serif text-[34px] text-ink">No campaigns yet</div>
+          <p className="mt-2 text-[18px] text-muted">
+            Your first campaign takes about two minutes.
+          </p>
+          <Link href="/campaigns/new" className={`${btnPrimary} mt-6`}>
+            + Create your first campaign
+          </Link>
+        </section>
+      ) : (
+        <section>
+          <div className="mb-4 font-mono text-[12px] uppercase tracking-[0.14em] text-faint">
+            YOUR CAMPAIGNS
+          </div>
+          <div className="grid grid-cols-2 gap-5">
+            {campaigns.map((c) => (
+              <Link
+                key={c.id}
+                href={`/campaigns/${c.id}`}
+                className="block rounded-[16px] border border-line bg-panel px-[26px] py-6 transition-colors hover:bg-panel-2"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="font-serif text-[26px] text-ink">{c.name}</div>
+                  <span className="rounded-[20px] bg-tint px-[9px] py-1 font-mono text-[11px] uppercase text-accent-dark">
+                    {c.status}
+                  </span>
+                </div>
+                <div className="mb-[18px] mt-1 text-[14px] text-muted">
+                  {c.category ?? 'general'} · launched {formatDate(c.created_at)}
+                </div>
+                <div className="flex gap-7">
+                  <div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+                      IMPRESSIONS
+                    </div>
+                    <div className="mt-1 text-[22px] font-semibold text-ink">
+                      {formatCount(c.impressions_total ?? 0)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+                      SPENT
+                    </div>
+                    <div className="mt-1 text-[22px] font-semibold text-ink">
+                      {formatMoney(c.budget_spent_cents)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+                      ATTENTION
+                    </div>
+                    <div className="mt-1 text-[22px] font-semibold text-ink">
+                      {c.attention_rate != null
+                        ? formatPct(c.attention_rate)
+                        : '—'}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </AppShell>
   );
 }

@@ -53,6 +53,12 @@ export interface Campaign {
   end_at: string | null;
   created_at: string;
   updated_at: string;
+  // Real per-campaign rollups from the impressions table (present on the
+  // /advertiser/v1/campaigns list response; optional elsewhere).
+  impressions_total?: number;
+  walked_by_total?: number;
+  attended_total?: number;
+  attention_rate?: number;
 }
 
 export interface RecentImpression {
@@ -99,6 +105,8 @@ export interface CampaignDetail {
     impressions_total: number;
     spent_cents_total: number;
     remaining_cents: number;
+    walked_by_total: number;
+    attended_total: number;
     by_day: CampaignDayStat[];
     audience_30d: AudienceSummary;
   };

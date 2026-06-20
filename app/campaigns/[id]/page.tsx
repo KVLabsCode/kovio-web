@@ -1,30 +1,10 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatCount, formatPct } from '@/lib/format';
 import AppShell from '@/components/AppShell';
-import { SectionHeader } from '@/components/SectionHeader';
-import { MetricCard } from '@/components/MetricCard';
-import Chart from '@/components/ChartClient';
-import PauseResumeButton from '@/components/PauseResumeButton';
-import type { Campaign } from '@/lib/types';
-
-function formatTargeting(rules: Campaign['targeting']): string {
-  if (!rules || rules.length === 0) return 'No targeting rules — shows everywhere.';
-  const parts: string[] = [];
-  for (const r of rules) {
-    const field = r.field as string;
-    const value = r.value as unknown;
-    if (field === 'hour_of_day' && Array.isArray(value)) {
-      const [a, b] = value as number[];
-      parts.push(`Between ${a}:00 and ${b}:00`);
-    } else if (field === 'person_count') {
-      parts.push(`At least ${String(value)} person watching`);
-    } else {
-      parts.push(`${field} ${String(r.op)} ${JSON.stringify(value)}`);
-    }
-  }
-  return parts.join(', ');
-}
+import HawkeyeTile, { CampaignPauseButton } from '@/components/HawkeyeTile';
+import HawkeyeFeed from '@/components/HawkeyeFeed';
 
 export default async function CampaignDetailPage({
   params,
@@ -37,7 +17,7 @@ export default async function CampaignDetailPage({
   if (error || !data) {
     return (
       <AppShell>
-        <p className="text-sm text-danger">
+        <p className="text-[15px] text-danger">
           Couldn’t load campaign: {error?.detail ?? 'unknown error'}
         </p>
       </AppShell>
@@ -45,132 +25,143 @@ export default async function CampaignDetailPage({
   }
 
   const { campaign: c, stats } = data;
-  const launched = new Date(c.created_at).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const series = stats.by_day.map((d) => ({ date: d.date, spend: d.spent_cents / 100 }));
+
+  // --- metric derivations -------------------------------------------------
+  const impressions = stats.impressions_total;
+  const attended = stats.attended_total;
+  const walkedBy = stats.walked_by_total;
+  const engaged = 0;
+
+  const attentionRate =
+    walkedBy > 0
+      ? attended / walkedBy
+      : impressions > 0
+        ? attended / impressions
+        : 0;
+
+  const cpm =
+    impressions > 0
+      ? formatMoney(Math.round((stats.spent_cents_total / impressions) * 1000))
+      : '—';
+
+  const metrics: { label: string; value: string; title?: string }[] = [
+    { label: 'IMPRESSIONS', value: formatCount(impressions), title: 'Total impressions served' },
+    { label: 'ATTENDED', value: formatCount(attended), title: 'People who faced the screen' },
+    { label: 'ATTENTION RATE', value: formatPct(attentionRate), title: 'Attended / passed by' },
+    { label: 'ENGAGED', value: formatCount(engaged), title: 'Interactions (QR / touch)' },
+    { label: 'SPENT', value: formatMoney(stats.spent_cents_total), title: 'Budget spent so far' },
+    { label: 'CPM', value: cpm, title: 'Cost per thousand impressions' },
+  ];
 
   return (
     <AppShell>
-      <SectionHeader
-        label={`CAMPAIGN · ${c.status.toUpperCase()}`}
-        greeting={c.name}
-        subtitle={`${c.advertiser} · ${c.category ?? 'uncategorized'} · launched ${launched}`}
-        rightActions={<PauseResumeButton id={c.id} status={c.status} />}
-      />
-
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <MetricCard label="IMPRESSIONS" value={String(stats.impressions_total)} />
-        <MetricCard label="SPENT" value={formatMoney(stats.spent_cents_total)} />
-        <MetricCard label="REMAINING" value={formatMoney(stats.remaining_cents)} />
-      </div>
-
-      {/* LiDAR audience this ad reached while playing (anonymous) */}
-      <div className="mt-6">
-        <div className="font-mono text-label uppercase tracking-wider text-ink-3">
-          LiDAR audience · last 28 days
+      {/* Header */}
+      <header className="flex items-start justify-between mb-[26px]">
+        <div>
+          <div className="font-mono text-[13px] uppercase tracking-[0.14em] text-faint">
+            CAMPAIGN · {c.status.toUpperCase()}
+          </div>
+          <h1 className="font-serif font-medium text-[62px] leading-none tracking-[-0.01em] text-ink my-[14px] mb-2.5">
+            {c.name}
+          </h1>
+          <div className="text-[17px] text-muted">
+            {c.category ?? 'general'} · {formatMoney(c.budget_total_cents)} budget
+          </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-6 sm:grid-cols-4">
-          <MetricCard
-            label="REACH"
-            value={stats.audience_30d.samples > 0 ? String(stats.audience_30d.avg_reach) : '—'}
-            context={stats.audience_30d.samples > 0 ? `peak ${stats.audience_30d.peak_reach} in view` : 'no samples yet'}
-          />
-          <MetricCard
-            label="ATTENTION"
-            value={
-              stats.audience_30d.avg_reach > 0
-                ? `${Math.round((stats.audience_30d.avg_attended / stats.audience_30d.avg_reach) * 100)}%`
-                : '—'
-            }
-            context="faced the screen"
-          />
-          <MetricCard
-            label="AVG DWELL"
-            value={stats.audience_30d.samples > 0 ? `${stats.audience_30d.avg_dwell_s}s` : '—'}
-            context="time in view"
-          />
-          <MetricCard
-            label="NEAREST"
-            value={stats.audience_30d.nearest_m != null ? `${stats.audience_30d.nearest_m}m` : '—'}
-            context="closest viewer"
-          />
-        </div>
-      </div>
+        <CampaignPauseButton id={c.id} status={c.status} />
+      </header>
 
-      <div className="mt-6 rounded-lg border border-border-soft bg-card p-6">
-        <h3 className="text-base text-ink">Daily spend</h3>
-        <div className="mt-1 font-mono text-label uppercase text-ink-3">Last 30 days</div>
-        <div className="mt-4">
-          <Chart
-            data={series}
-            xKey="date"
-            primaryKey="spend"
-            primaryLabel="Spend"
-            primaryFormat="usd"
-          />
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-lg border border-border-soft bg-card p-6">
-        <h3 className="text-base text-ink">Details</h3>
-        <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-          <Detail label="Creative">
-            <div className="flex items-center gap-3">
-              <div className="h-16 w-24 shrink-0 overflow-hidden rounded border border-border-soft bg-black/5">
-                {c.creative_type === 'video' ? (
-                  <video
-                    src={c.creative_url}
-                    muted
-                    loop
-                    autoPlay
-                    playsInline
-                    className="h-full w-full object-cover"
-                  />
-                ) : c.creative_type === 'image' ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.creative_url} alt="creative" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center font-mono text-[10px] uppercase text-ink-3">
-                    html
-                  </div>
-                )}
-              </div>
-              <div>
-                <span className="rounded bg-rust-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-rust-dark">
-                  {c.creative_type}
-                </span>
-                <a
-                  href={c.creative_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 block text-rust transition-colors hover:text-rust-dark"
-                >
-                  Open creative →
-                </a>
-              </div>
+      {/* Metric cards */}
+      <div className="grid grid-cols-6 gap-4 mb-[46px]">
+        {metrics.map((m) => (
+          <div
+            key={m.label}
+            title={m.title}
+            className="bg-panel border border-line rounded-[14px] p-[22px]"
+          >
+            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint">
+              {m.label}
             </div>
-          </Detail>
-          <Detail label="Targeting">{formatTargeting(c.targeting)}</Detail>
-          <Detail label="Encounter cap">{c.encounter_cap_seconds}s</Detail>
-          <Detail label="Cost / impression">{formatMoney(c.cost_per_impression_cents)}</Detail>
-          <Detail label="Cost / attended">{formatMoney(c.cost_per_attended_cents)}</Detail>
-          <Detail label="Budget">{formatMoney(c.budget_total_cents)}</Detail>
-          <Detail label="Start">{new Date(c.start_at).toLocaleDateString()}</Detail>
-          <Detail label="End">{c.end_at ? new Date(c.end_at).toLocaleDateString() : '—'}</Detail>
-        </dl>
+            <div className="text-[40px] font-bold tracking-[-0.02em] text-ink mt-2">{m.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Hawkeye sub-header */}
+      <div className="flex items-end justify-between mb-[22px]">
+        <div>
+          <h2 className="font-serif font-medium text-[36px] text-ink">Hawkeye</h2>
+          <p className="text-[17px] text-muted">
+            Live footage of robots running this campaign, with verified interaction data.
+          </p>
+        </div>
+        <Link
+          href={`/campaigns/${c.id}/report`}
+          className="rounded-[11px] border border-accent px-5 py-3 text-accent transition-colors hover:bg-tint"
+        >
+          Hawkeye full report →
+        </Link>
+      </div>
+
+      {/* Main grid */}
+      <div className="grid grid-cols-[1.35fr_1fr] gap-6">
+        {/* Left: animated tile */}
+        <HawkeyeTile
+          unit="Unitree G1-001"
+          location="Market St & 3rd, SF"
+          passed={walkedBy}
+          looked={attended}
+          engaged={0}
+          fps={30}
+        />
+
+        {/* Right column */}
+        <div className="flex flex-col gap-6">
+          {/* Engagement breakdown */}
+          <div className="bg-panel border border-line rounded-[16px] px-[30px] py-7">
+            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-faint mb-[22px]">
+              ENGAGEMENT BREAKDOWN
+            </div>
+            <div className="h-3 rounded-[6px] overflow-hidden flex mb-[26px]">
+              <div className="bg-navy" style={{ width: '94%' }} />
+              <div className="bg-accent" style={{ width: '5%' }} />
+              <div className="bg-good" style={{ width: '1%' }} />
+            </div>
+            <LegendRow color="bg-navy" label="Views" pct="94%" />
+            <LegendRow color="bg-accent" label="QR scans" pct="5%" />
+            <LegendRow color="bg-good" label="Touches" pct="1%" last />
+          </div>
+
+          {/* Live activity */}
+          <HawkeyeFeed />
+        </div>
       </div>
     </AppShell>
   );
 }
 
-function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+function LegendRow({
+  color,
+  label,
+  pct,
+  last,
+}: {
+  color: string;
+  label: string;
+  pct: string;
+  last?: boolean;
+}) {
   return (
-    <div className="flex justify-between border-b border-dashed border-border-soft py-2">
-      <dt className="text-ink-3">{label}</dt>
-      <dd className="ml-4 text-right text-ink">{children}</dd>
+    <div
+      className={`flex items-center justify-between py-3.5 ${
+        last ? '' : 'border-b border-line'
+      }`}
+    >
+      <div className="flex items-center">
+        <span className={`block rounded-full ${color}`} style={{ width: 9, height: 9 }} />
+        <span className="text-[16px] text-ink ml-2.5">{label}</span>
+      </div>
+      <span className="text-[16px] text-ink">{pct}</span>
     </div>
   );
 }

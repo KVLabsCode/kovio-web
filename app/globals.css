@@ -1,27 +1,96 @@
 @import "tailwindcss";
 
-/* Tailwind v4 design tokens (the CSS-native equivalent of the prompt's
-   tailwind.config theme.extend). next/font sets --font-*-src variables; we map
-   the semantic font tokens to them with fallbacks. */
-@theme {
-  --color-page: #f2ecdc;
-  --color-card: #f5efe3;
-  --color-card-hover: #efe9dd;
-  --color-border-soft: #d4c9af;
-  --color-border-mid: #b8a988;
-  --color-ink: #1c1a18;
-  --color-ink-2: #5f574a;
-  --color-ink-3: #8a7f6f;
-  --color-rust: #c57a3f;
-  --color-rust-dark: #9f5e2a;
-  --color-rust-soft: #e8c9a5;
-  --color-navy: #3d6cb3;
-  --color-navy-soft: #c8d5e8;
-  --color-success: #4a7548;
-  --color-danger: #b04535;
+/* ============================================================================
+   Design tokens — ported verbatim from the Claude Design prototype (Kovio.dc.html).
+   The raw palette lives as CSS variables on :root (light) and [data-theme="dark"]
+   so the whole UI re-themes by flipping one attribute. The Tailwind @theme block
+   below maps both the design's names (panel, muted, accent…) and the app's older
+   names (page, card, ink-2, rust…) onto these variables, so every utility class
+   is theme-aware and existing pages keep working.
+   ============================================================================ */
+:root,
+[data-theme="light"] {
+  --bg: #f2ecdc;
+  --panel: #f5efe3;
+  --panel-2: #e9dec6;
+  --line: #ded3ba;
+  --line-strong: #cdc1a1;
+  --ink: #1c1a18;
+  --muted: #6e6555;
+  --faint: #9a8f77;
+  --accent: #c57a3f;
+  --accent-dark: #a8551f;
+  --accent-soft: #dcbc92;
+  --tint: #e6d4b4;
+  --tint-line: #d6bf96;
+  --field: #efe7d4;
+  --good: #4a7548;
+  --navy: #3d6cb3;
+  --navy-soft: #c8d5e8;
+  --danger: #b04535;
+  --dark-tile: #332c24;
+}
 
-  --font-sans: var(--font-sans-src), system-ui, sans-serif;
-  --font-serif: var(--font-serif-src), Georgia, serif;
+[data-theme="dark"] {
+  --bg: #161310;
+  --panel: #211d18;
+  --panel-2: #2a2519;
+  --line: #39321f;
+  --line-strong: #4b4231;
+  --ink: #f1ead9;
+  --muted: #b6ac95;
+  --faint: #857b64;
+  --accent: #d38b50;
+  --accent-dark: #bc6f37;
+  --accent-soft: #5c4527;
+  --tint: #332817;
+  --tint-line: #4d3d22;
+  --field: #2a2519;
+  --good: #5cbe85;
+  --navy: #5b86c9;
+  --navy-soft: #2f3f57;
+  --danger: #cf6857;
+  --dark-tile: #0e0b07;
+}
+
+@theme {
+  /* Design-named tokens */
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-soft: var(--accent-soft);
+  --color-tint: var(--tint);
+  --color-tint-line: var(--tint-line);
+  --color-field: var(--field);
+  --color-good: var(--good);
+  --color-navy: var(--navy);
+  --color-navy-soft: var(--navy-soft);
+  --color-danger: var(--danger);
+  --color-dark-tile: var(--dark-tile);
+
+  /* Back-compat aliases for the app's older token names */
+  --color-page: var(--bg);
+  --color-card: var(--panel);
+  --color-card-hover: var(--panel-2);
+  --color-border-soft: var(--line);
+  --color-border-mid: var(--line-strong);
+  --color-ink-2: var(--muted);
+  --color-ink-3: var(--faint);
+  --color-rust: var(--accent);
+  --color-rust-dark: var(--accent-dark);
+  --color-rust-soft: var(--accent-soft);
+  --color-success: var(--good);
+
+  /* Fonts — design uses Newsreader (serif) + IBM Plex Mono (mono) + system sans */
+  --font-sans: var(--font-sans-src), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+  --font-serif: var(--font-serif-src), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-mono-src), ui-monospace, monospace;
 
   --text-display: 56px;
@@ -42,13 +111,37 @@
 }
 
 @layer base {
+  html {
+    background: var(--bg);
+  }
   body {
-    background: #f2ecdc;
-    color: #1c1a18;
+    background: var(--bg);
+    color: var(--ink);
     -webkit-font-smoothing: antialiased;
   }
   ::selection {
-    background: #c57a3f;
-    color: #f2ecdc;
+    background: var(--accent);
+    color: var(--bg);
   }
+  /* Scrollbar — matches the prototype */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Pulsing LIVE / STREAMING dots from the Hawkeye design */
+@keyframes kpulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.k-pulse {
+  animation: kpulse 1.4s ease-in-out infinite;
 }
