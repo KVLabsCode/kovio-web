@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { CATEGORIES, categoryLabel } from '@/lib/categories';
 
 type Mode = 'trial' | 'paid';
 
@@ -21,25 +22,7 @@ interface Draft {
   cardName: string;
 }
 
-const CATEGORIES: Array<[string, string]> = [
-  ['food', 'food'],
-  ['beverage', 'beverage'],
-  ['retail', 'retail'],
-  ['fashion', 'fashion'],
-  ['beauty', 'beauty'],
-  ['tech', 'tech'],
-  ['gaming', 'gaming'],
-  ['automotive', 'automotive'],
-  ['finance', 'finance'],
-  ['health', 'health & fitness'],
-  ['travel', 'travel'],
-  ['realestate', 'real estate'],
-  ['entertainment', 'entertainment'],
-  ['events', 'events'],
-  ['hospitality', 'hospitality'],
-  ['nonprofit', 'nonprofit'],
-  ['other', 'other'],
-];
+
 const WHEN_LABEL: Record<Draft['when'], string> = {
   morning: 'Mornings',
   evening: 'Evenings',
@@ -73,9 +56,6 @@ function fmt(iso: string, withYear = false): string {
     day: 'numeric',
     ...(withYear ? { year: 'numeric' } : {}),
   });
-}
-function categoryLabel(v: string): string {
-  return CATEGORIES.find(([val]) => val === v)?.[1] ?? v;
 }
 
 export default function CampaignWizard({ trialAvailable }: { trialAvailable: boolean }) {
