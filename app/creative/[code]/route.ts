@@ -3,6 +3,15 @@ import { qrSvg } from '@/lib/qr';
 
 const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8' };
 
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, '&#39;');
+}
+
 export async function GET(
   request: Request,
   ctx: { params: Promise<{ code: string }> },
@@ -37,7 +46,7 @@ export async function GET(
   .scan{margin-top:6px;text-align:center;font:600 14px system-ui,sans-serif;color:#111}
 </style></head>
 <body><div class="stage">
-  ${image ? `<img class="art" src="${image}" alt="">` : ''}
+  ${image ? `<img class="art" src="${escapeAttr(image)}" alt="">` : ''}
   <div class="qr">${svg}<div class="scan">Scan me</div></div>
 </div></body></html>`;
 

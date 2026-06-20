@@ -33,4 +33,15 @@ describe('GET /creative/[code]', () => {
     expect(res.status).toBe(404);
     expect(res.headers.get('content-type')).toContain('text/html');
   });
+
+  it('escapes a malicious image_url so it cannot break out of the src attribute', async () => {
+    maybeSingle.mockResolvedValue({
+      data: { image_url: 'https://x/"><script>alert(1)</script>' },
+      error: null,
+    });
+    const res = await GET(request, ctx('abc'));
+    const html = await res.text();
+    expect(html).not.toContain('"><script>');
+    expect(html).toContain('&quot;&gt;&lt;script&gt;');
+  });
 });
