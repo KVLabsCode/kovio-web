@@ -1,4 +1,5 @@
 import type { CreateCampaignBody } from '@/lib/api-client';
+import { normalizeUrl } from '@/lib/enrich';
 
 export interface DraftCore {
   name: string;
@@ -18,6 +19,10 @@ function rand(n: number): string {
   let out = '';
   for (let i = 0; i < n; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
+}
+
+export function brandStepReady(draft: { website: string; company: string }): boolean {
+  return normalizeUrl(draft.website) !== null;
 }
 
 export function creativeUrlFor(origin: string, code: string): string {

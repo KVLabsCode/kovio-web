@@ -4,11 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { CATEGORIES, categoryLabel } from '@/lib/categories';
+import { buildCampaignBody, brandStepReady } from '@/lib/campaign-draft';
+import { createLink, attachCampaign } from '@/lib/links';
 
 type Mode = 'trial' | 'paid';
 
 interface Draft {
   name: string;
+  website: string;
+  company: string;
+  summary: string;
+  code: string;
   category: string;
   budget: string;
   start: string; // yyyy-mm-dd
@@ -40,15 +46,6 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
-function slugify(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'campaign';
-}
-function rand(n: number): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-  let out = '';
-  for (let i = 0; i < n; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
 function fmt(iso: string, withYear = false): string {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('en-US', {
@@ -64,6 +61,10 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<Draft>({
     name: '',
+    website: '',
+    company: '',
+    summary: '',
+    code: '',
     category: 'food',
     budget: '500',
     start: todayISO(),
@@ -76,6 +77,8 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     cvc: '',
     cardName: '',
   });
+  const [enriching, setEnriching] = useState(false);
+  const [enrichErr, setEnrichErr] = useState('');
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date(todayISO() + 'T00:00:00');
@@ -84,8 +87,12 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const stepKeys = mode === 'trial' ? ['setup', 'creative', 'review'] : ['details', 'creative', 'payment', 'review'];
-  const stepLabels = mode === 'trial' ? ['Setup', 'Creative', 'Review'] : ['Details', 'Creative', 'Payment', 'Review'];
+  const stepKeys = mode === 'trial'
+    ? ['brand', 'setup', 'creative', 'review']
+    : ['brand', 'details', 'creative', 'payment', 'review'];
+  const stepLabels = mode === 'trial'
+    ? ['Brand', 'Setup', 'Creative', 'Review']
+    : ['Brand', 'Details', 'Creative', 'Payment', 'Review'];
   const stepKey = stepKeys[step - 1];
   const isFinal = step === stepKeys.length;
 
@@ -97,10 +104,49 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     setStep(1);
     setCalOpen(false);
   }
-  function next() {
-    if (isFinal) launch();
-    else setStep((s) => Math.min(stepKeys.length, s + 1));
+
+  async function runEnrich() {
+    setEnrichErr('');
+    setEnriching(true);
+    try {
+      const res = await fetch('/api/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: draft.website }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setEnrichErr(body?.error ?? 'Could not analyze that website.');
+      } else {
+        setDraft((d) => ({
+          ...d,
+          company: body.company ?? d.company,
+          category: body.category ?? d.category,
+          name: d.name || (body.campaignName ?? ''),
+          summary: body.summary ?? '',
+        }));
+      }
+    } catch {
+      setEnrichErr('Could not analyze that website.');
+    } finally {
+      setEnriching(false);
+    }
   }
+
+  async function next() {
+    if (stepKey === 'brand' && !brandStepReady(draft)) {
+      setEnrichErr('Enter your website to continue.');
+      return;
+    }
+    if (isFinal) { launch(); return; }
+    const nextKey = stepKeys[step]; // step is 1-based; stepKeys[step] is the next key
+    if (nextKey === 'creative' && !draft.code) {
+      const made = await createLink({ target_url: draft.website, image_url: draft.creative || null });
+      if ('code' in made) set('code', made.code);
+    }
+    setStep((s) => Math.min(stepKeys.length, s + 1));
+  }
+
   function back() {
     if (step === 1) router.push('/dashboard');
     else setStep((s) => Math.max(1, s - 1));
@@ -121,30 +167,22 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   async function launch() {
     setLoading(true);
     setError('');
-    const days = mode === 'trial' ? 7 : draft.duration;
-    const startMs = new Date(draft.start + 'T00:00:00').getTime();
-    const endIso = new Date(startMs + days * 86400000).toISOString();
-    const body = {
-      campaign_id: `${slugify(draft.name)}-${rand(4).toLowerCase()}`,
-      name: draft.name.trim() || 'Untitled campaign',
-      advertiser: draft.name.trim() || 'Brand',
-      creative_url: draft.creative.trim() || 'creatives/demo.html',
-      targeting: [{ field: 'person_count', op: '>=', value: 1 }],
-      priority: 10,
-      encounter_cap_seconds: 300,
-      category: draft.category,
-      budget_total_cents: mode === 'trial' ? 50000 : Number(draft.budget) * 100,
-      cost_per_impression_cents: 10,
-      cost_per_attended_cents: 5,
-      start_at: new Date(draft.start + 'T00:00:00').toISOString(),
-      end_at: endIso,
-    };
+    const origin = window.location.origin;
+    const body = buildCampaignBody({
+      draft: {
+        name: draft.name, company: draft.company, category: draft.category,
+        budget: draft.budget, start: draft.start, duration: draft.duration, code: draft.code,
+      },
+      mode,
+      origin,
+    });
     const { data, error } = await apiClient.createCampaign(body);
     if (error) {
       setLoading(false);
       setError(error.detail ?? 'Could not launch the campaign. Please try again.');
       return;
     }
+    if (data?.id && draft.code) await attachCampaign(draft.code, data.id);
     router.push(data?.id ? `/campaigns/${data.id}` : '/dashboard');
     router.refresh();
   }
@@ -339,6 +377,45 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
         <div className="rounded-[18px] border border-line bg-panel px-9 py-[34px]">
           {step === 1 && trialAvailable && modeTabs}
 
+          {/* BRAND */}
+          {stepKey === 'brand' && (
+            <>
+              <div className="mb-[22px] font-mono text-[13px] uppercase tracking-[0.14em] text-faint">Your brand</div>
+              <label className={labelCls}>Company website</label>
+              <div className="flex gap-2.5">
+                <input
+                  value={draft.website}
+                  onChange={(e) => set('website', e.target.value)}
+                  onBlur={() => brandStepReady(draft) && !draft.company && runEnrich()}
+                  placeholder="acme.com"
+                  autoFocus
+                  className={`${inputCls} flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={runEnrich}
+                  disabled={enriching || !brandStepReady(draft)}
+                  className="rounded-[11px] bg-accent px-5 py-4 text-[16px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+                >
+                  {enriching ? 'Reading…' : 'Fetch details'}
+                </button>
+              </div>
+              <p className="mt-2 text-[14px] text-muted">We&apos;ll scan your site to pre-fill the rest and add a scannable QR to your ad.</p>
+
+              {draft.company && (
+                <div className="mt-6 rounded-[14px] border border-tint-line bg-tint px-5 py-[18px]">
+                  <div className="text-[13px] font-mono uppercase tracking-[0.12em] text-accent-dark/70">We found you</div>
+                  <label className={`${labelCls} mt-3`}>Company name</label>
+                  <input value={draft.company} onChange={(e) => set('company', e.target.value)} className={`${inputCls} mb-3`} />
+                  {draft.summary && <p className="text-[15px] text-accent-dark/80">{draft.summary}</p>}
+                </div>
+              )}
+
+              {enrichErr && <p className="mt-3 text-sm text-danger">{enrichErr}</p>}
+              <div className="mt-[30px]"><Footer /></div>
+            </>
+          )}
+
           {/* TRIAL SETUP */}
           {stepKey === 'setup' && (
             <>
@@ -478,9 +555,15 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           {stepKey === 'creative' && (
             <>
               <div className="mb-[22px] font-mono text-[13px] uppercase tracking-[0.14em] text-faint">Creative</div>
-              <div className="mb-[22px]">
-                <CreativeBox h={340} />
-              </div>
+              {draft.code ? (
+                <iframe
+                  title="Creative preview"
+                  src={`/creative/${draft.code}`}
+                  className="mb-[22px] h-[340px] w-full rounded-[12px] border-2 border-dashed border-line-strong"
+                />
+              ) : (
+                <div className="mb-[22px]"><CreativeBox h={340} /></div>
+              )}
               <label className="mb-2 block text-[17px] text-muted">…or paste an image URL</label>
               <input value={draft.creative} onChange={(e) => set('creative', e.target.value)} placeholder="https://…" className={`${inputCls} mb-[30px]`} />
               <Footer />
