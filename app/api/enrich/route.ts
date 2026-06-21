@@ -1,7 +1,11 @@
 import { generateText, Output } from 'ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeUrl, extractText, BrandSchema } from '@/lib/enrich';
 import { safeFetch } from '@/lib/ssrf';
+
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+const ENRICH_MODEL = 'anthropic/claude-sonnet-4.5';
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -32,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const { output } = await generateText({
-      model: 'anthropic/claude-sonnet-4-6',
+      model: openrouter(ENRICH_MODEL),
       output: Output.object({ schema: BrandSchema }),
       prompt:
         'You are helping an advertiser set up a robot-fleet ad campaign. ' +
