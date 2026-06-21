@@ -3,7 +3,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/confirm'];
+// `/r/` (tracked QR redirects) and `/creative/` (fleet-rendered ad creatives)
+// are reached by unauthenticated robots and phone scanners — they must stay public.
+const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/confirm', '/r/', '/creative/'];
 
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
