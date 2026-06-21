@@ -117,7 +117,7 @@ export default async function FleetDetailPage({
           />
           <MetricCard
             label="AVG DWELL"
-            value={stats.audience_30d.samples > 0 ? `${stats.audience_30d.avg_dwell_s}s` : '—'}
+            value={stats.audience_30d.avg_dwell_s > 0 ? `${stats.audience_30d.avg_dwell_s}s` : '—'}
             context="time in view"
           />
           <MetricCard

@@ -148,7 +148,7 @@ export default async function OemDashboardPage({
           />
           <MetricCard
             label="AVG DWELL"
-            value={d.audience_30d.samples > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
+            value={d.audience_30d.avg_dwell_s > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
             context="time in view"
           />
           <MetricCard

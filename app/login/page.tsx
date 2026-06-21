@@ -163,6 +163,12 @@ export default function LoginPage() {
                 {isSignup ? 'Sign in' : 'Sign up'}
               </button>
             </p>
+            <p className="mt-2 text-center text-sm text-ink-2">
+              Operate a robot fleet?{' '}
+              <a href="/oem/onboarding" className="text-rust transition-colors hover:text-rust-dark">
+                Register a fleet
+              </a>
+            </p>
           </>
         )}
       </div>

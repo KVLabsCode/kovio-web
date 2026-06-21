@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatCount, formatMoney, formatPct } from '@/lib/format';
+import { formatCount, formatMoney, formatPct, attentionRate } from '@/lib/format';
 import AppShell from '@/components/AppShell';
 
 const btnPrimary =
@@ -222,9 +222,10 @@ export default async function DashboardPage() {
                       ATTENTION
                     </div>
                     <div className="mt-1 text-[22px] font-semibold text-ink">
-                      {c.attention_rate != null
-                        ? formatPct(c.attention_rate)
-                        : '—'}
+                      {(() => {
+                        const r = attentionRate(c);
+                        return r != null ? formatPct(r) : '—';
+                      })()}
                     </div>
                   </div>
                 </div>

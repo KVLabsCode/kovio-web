@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatMoney, formatCount, formatPct } from '@/lib/format';
+import { formatMoney, formatCount, formatPct, attentionRate as computeAttentionRate } from '@/lib/format';
 import AppShell from '@/components/AppShell';
 import HawkeyeTile, { CampaignPauseButton } from '@/components/HawkeyeTile';
 import HawkeyeFeed from '@/components/HawkeyeFeed';
@@ -32,12 +32,8 @@ export default async function CampaignDetailPage({
   const walkedBy = stats.walked_by_total;
   const engaged = 0;
 
-  const attentionRate =
-    walkedBy > 0
-      ? attended / walkedBy
-      : impressions > 0
-        ? attended / impressions
-        : 0;
+  // Same derivation as the list/dashboard (lib/format) so the number can't drift.
+  const attentionRate = computeAttentionRate(stats) ?? 0;
 
   const cpm =
     impressions > 0

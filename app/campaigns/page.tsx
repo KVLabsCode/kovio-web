@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatMoney, formatCount, formatPct } from '@/lib/format';
+import { formatMoney, formatCount, formatPct, attentionRate } from '@/lib/format';
 import AppShell from '@/components/AppShell';
 
 export default async function CampaignsPage() {
@@ -102,7 +102,10 @@ export default async function CampaignsPage() {
                   ATTENTION
                 </p>
                 <p className="text-[22px] font-semibold text-ink mt-1">
-                  {c.attention_rate != null ? formatPct(c.attention_rate) : '—'}
+                  {(() => {
+                    const r = attentionRate(c);
+                    return r != null ? formatPct(r) : '—';
+                  })()}
                 </p>
               </div>
             </Link>

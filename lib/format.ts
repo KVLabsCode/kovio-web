@@ -17,6 +17,22 @@ export const formatCount = (n: number): string => {
 
 export const formatPct = (decimal: number): string => `${(decimal * 100).toFixed(1)}%`;
 
+// Attention rate = people who faced the screen / people who passed by. Derived
+// from the totals (not the API's `attention_rate`, which divided by impressions
+// and could exceed 100%) so the list, dashboard, and detail page never drift.
+// Returns null when there's no reach data yet, so callers can render "—".
+export function attentionRate(s: {
+  walked_by_total?: number | null;
+  attended_total?: number | null;
+  impressions_total?: number | null;
+}): number | null {
+  const walked = s.walked_by_total ?? 0;
+  const attended = s.attended_total ?? 0;
+  if (walked > 0) return attended / walked;
+  const impressions = s.impressions_total ?? 0;
+  return impressions > 0 ? attended / impressions : null;
+}
+
 export const formatRelative = (iso: string): string => {
   const now = Date.now();
   const then = new Date(iso).getTime();

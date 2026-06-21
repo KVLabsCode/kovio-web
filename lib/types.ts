@@ -76,7 +76,6 @@ export interface AudienceSummary {
   peak_reach: number;
   avg_attended: number;
   avg_dwell_s: number;
-  nearest_m: number | null;
 }
 
 export interface Dashboard {
@@ -88,7 +87,6 @@ export interface Dashboard {
   impressions_30d: number;
   spent_24h_cents: number;
   spent_30d_cents: number;
-  audience_24h: AudienceSummary;
   audience_30d: AudienceSummary;
   recent_impressions: RecentImpression[];
 }
@@ -172,7 +170,6 @@ export interface OemDashboard {
   total_fleets: number;
   total_robots: number;
   active_robots: number;
-  audience_24h: AudienceSummary;
   audience_30d: AudienceSummary;
   by_day: OemDayStat[];
   by_fleet: OemFleetStat[];
