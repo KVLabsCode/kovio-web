@@ -19,13 +19,10 @@ export async function GET(
   const { code } = await ctx.params;
   const { origin } = new URL(request.url);
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('campaign_links')
-    .select('image_url')
-    .eq('code', code)
-    .maybeSingle();
+  const { data } = await supabase.rpc('get_creative', { p_code: code });
+  const row = Array.isArray(data) ? data[0] : null;
 
-  if (!data) {
+  if (!row) {
     return new Response('<!doctype html><title>Not found</title><body></body>', {
       status: 404,
       headers: HTML_HEADERS,
@@ -33,7 +30,8 @@ export async function GET(
   }
 
   const svg = await qrSvg(`${origin}/r/${code}`);
-  const image = data.image_url ?? '';
+  const rawImage = row.image_url ?? '';
+  const image = /^https?:\/\//i.test(rawImage) ? rawImage : '';
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>

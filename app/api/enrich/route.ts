@@ -1,6 +1,7 @@
 import { generateText, Output } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeUrl, extractText, BrandSchema } from '@/lib/enrich';
+import { safeFetch } from '@/lib/ssrf';
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -22,14 +23,7 @@ export async function POST(request: Request): Promise<Response> {
 
   let text: string;
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(url, {
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: { 'User-Agent': 'KovioBot/1.0 (+https://kovio.ai)' },
-    });
-    clearTimeout(timer);
+    const res = await safeFetch(url);
     if (!res.ok) throw new Error(`status ${res.status}`);
     text = extractText(await res.text());
   } catch {

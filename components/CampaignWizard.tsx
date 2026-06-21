@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { CATEGORIES, categoryLabel } from '@/lib/categories';
 import { buildCampaignBody, brandStepReady } from '@/lib/campaign-draft';
-import { createLink, attachCampaign } from '@/lib/links';
+import { createLink, attachCampaign, updateLinkImage } from '@/lib/links';
 
 type Mode = 'trial' | 'paid';
 
@@ -173,6 +173,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     setLoading(true);
     setError('');
     const origin = window.location.origin;
+    if (draft.code) await updateLinkImage(draft.code, draft.creative || null);
     const body = buildCampaignBody({
       draft: {
         name: draft.name, company: draft.company, category: draft.category,

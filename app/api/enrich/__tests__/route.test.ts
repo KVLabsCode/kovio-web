@@ -11,6 +11,9 @@ vi.mock('ai', () => ({
   Output: { object: (x: unknown) => x },
 }));
 
+const safeFetch = vi.fn();
+vi.mock('@/lib/ssrf', () => ({ safeFetch: (...a: unknown[]) => safeFetch(...a) }));
+
 import { POST } from '@/app/api/enrich/route';
 
 function req(body: unknown) {
@@ -23,9 +26,9 @@ function req(body: unknown) {
 beforeEach(() => {
   getUser.mockReset();
   generateText.mockReset();
+  safeFetch.mockReset();
   getUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
-  vi.stubGlobal('fetch', vi.fn(async () =>
-    new Response('<html><body><h1>Acme</h1>widgets</body></html>', { status: 200 })));
+  safeFetch.mockResolvedValue(new Response('<html><body><h1>Acme</h1>widgets</body></html>', { status: 200 }));
 });
 
 describe('POST /api/enrich', () => {

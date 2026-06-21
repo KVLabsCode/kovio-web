@@ -31,3 +31,8 @@ export async function attachCampaign(code: string, campaignId: string): Promise<
   const supabase = createClient();
   await supabase.from('campaign_links').update({ campaign_id: campaignId }).eq('code', code);
 }
+
+export async function updateLinkImage(code: string, imageUrl: string | null): Promise<void> {
+  const supabase = createClient();
+  await supabase.from('campaign_links').update({ image_url: imageUrl }).eq('code', code);
+}

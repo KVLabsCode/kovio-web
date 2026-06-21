@@ -10,10 +10,13 @@ create table if not exists public.campaign_links (
 
 alter table public.campaign_links enable row level security;
 
+drop policy if exists "owner can insert" on public.campaign_links;
 create policy "owner can insert" on public.campaign_links
   for insert with check (owner = auth.uid());
+drop policy if exists "owner can select" on public.campaign_links;
 create policy "owner can select" on public.campaign_links
   for select using (owner = auth.uid());
+drop policy if exists "owner can update" on public.campaign_links;
 create policy "owner can update" on public.campaign_links
   for update using (owner = auth.uid());
 
