@@ -141,8 +141,13 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     if (isFinal) { launch(); return; }
     const nextKey = stepKeys[step]; // step is 1-based; stepKeys[step] is the next key
     if (nextKey === 'creative' && !draft.code) {
+      setError('');
       const made = await createLink({ target_url: draft.website, image_url: draft.creative || null });
-      if ('code' in made) set('code', made.code);
+      if (!('code' in made)) {
+        setError('Could not prepare your creative. Please try again.');
+        return;
+      }
+      set('code', made.code);
     }
     setStep((s) => Math.min(stepKeys.length, s + 1));
   }
