@@ -75,7 +75,10 @@ export interface AudienceSummary {
   avg_reach: number;
   peak_reach: number;
   avg_attended: number;
+  // Sentinel: 0 means "no dwell data yet" (no column) — guard on the value.
   avg_dwell_s: number;
+  // Closest LiDAR approach (metres) during ads in the window; null => "—".
+  nearest_m: number | null;
 }
 
 export interface Dashboard {
