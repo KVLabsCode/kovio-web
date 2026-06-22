@@ -14,37 +14,37 @@ function randomSuffix(): string {
 
 const VALUE_PROPS: Array<{ title: string; body: string }> = [
   {
-    title: 'Real-world reach',
-    body: 'Your creative on robot screens moving through the busiest blocks of the city.',
+    title: 'A new revenue stream',
+    body: 'Turn the screens already on your robots into paid ad inventory — Kovio fills them and splits the revenue with you.',
   },
   {
-    title: 'Verified attention',
-    body: 'On-device vision + LiDAR count who actually looked — measured, never estimated.',
+    title: 'Plug-and-play SDK',
+    body: 'Mint a fleet API key, drop in the SDK, and your robots start pulling campaigns and reporting plays in minutes.',
   },
   {
-    title: 'Private by design',
-    body: 'Faces never leave the robot. Only anonymous counts ever travel to Kovio.',
+    title: 'You set the terms',
+    body: 'Your revenue share, your fleets, your allow/block lists. Faces never leave the robot — only anonymous counts travel to Kovio.',
   },
 ];
 
-export default function OnboardingPage() {
+export default function OemOnboardingPage() {
   const router = useRouter();
-  const [brand, setBrand] = useState('');
+  const [company, setCompany] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const name = brand.trim();
+    const name = company.trim();
     if (!name) return;
     setLoading(true);
     setError('');
 
-    const base = slugify(name) || 'brand';
+    const base = slugify(name) || 'fleet';
     for (const slug of [base, `${base}-${randomSuffix()}`]) {
-      const { error } = await apiClient.onboard({ org_name: name, org_slug: slug });
+      const { error } = await apiClient.oemOnboard({ org_name: name, org_slug: slug });
       if (!error || error.code === 'already_onboarded') {
-        router.push('/dashboard');
+        router.push('/oem/dashboard');
         router.refresh();
         return;
       }
@@ -55,20 +55,22 @@ export default function OnboardingPage() {
       }
     }
     setLoading(false);
-    setError('Could not create your workspace. Please try again.');
+    setError('Could not create your fleet workspace. Please try again.');
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="w-full max-w-[1040px]">
-        <div className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">Kovio</div>
+        <div className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">
+          Kovio for fleets
+        </div>
 
         <h1 className="mt-8 max-w-[900px] font-serif text-[68px] font-medium leading-[1.02] tracking-[-0.02em] text-ink">
-          Advertising that <em className="italic text-accent">walks the city.</em>
+          Put your robots <em className="italic text-accent">to work.</em>
         </h1>
         <p className="mt-6 max-w-[680px] text-[22px] leading-[1.5] text-muted">
-          Kovio puts your brand on autonomous robots rolling through real streets — and shows you
-          exactly who looked, measured frame-by-frame on the robot itself.
+          Register your fleet to turn the screens already rolling through the city into paid ad
+          inventory — and earn a revenue share on every verified impression.
         </p>
 
         {/* Value props */}
@@ -84,41 +86,38 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        {/* Brand capture */}
+        {/* Company capture */}
         <div className="mt-12 max-w-[560px]">
           <h2 className="font-serif text-[30px] font-medium tracking-[-0.01em] text-ink">
-            Let&apos;s get your brand on the road.
+            Let&apos;s get your fleet earning.
           </h2>
           <form onSubmit={handleSubmit} className="mt-6">
-            <label htmlFor="brand" className="mb-2 block text-[17px] text-ink">
-              Brand name
+            <label htmlFor="company" className="mb-2 block text-[17px] text-ink">
+              Company name
             </label>
             <input
-              id="brand"
+              id="company"
               type="text"
               required
               autoFocus
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="Your brand"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Your robotics company"
               className="w-full rounded-[12px] border border-accent bg-field px-[22px] py-5 text-lg text-ink outline-none transition-colors focus:border-accent"
             />
             <button
               type="submit"
-              disabled={loading || !brand.trim()}
+              disabled={loading || !company.trim()}
               className="mt-4 w-full rounded-[12px] bg-accent py-5 text-lg text-white transition-colors duration-200 hover:bg-accent-dark disabled:opacity-50"
             >
-              {loading ? 'Setting up…' : 'Continue →'}
+              {loading ? 'Setting up…' : 'Register fleet →'}
             </button>
             {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </form>
           <p className="mt-4 text-[15px] text-muted">
-            Your first campaign is on us — no card needed to launch.
-          </p>
-          <p className="mt-2 text-[15px] text-muted">
-            Operate a robot fleet instead?{' '}
-            <Link href="/oem/onboarding" className="text-accent hover:underline">
-              Register a fleet →
+            Advertising a brand instead?{' '}
+            <Link href="/onboarding" className="text-accent hover:underline">
+              Get your brand on the road →
             </Link>
           </p>
         </div>

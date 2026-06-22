@@ -131,7 +131,7 @@ export default async function OemDashboardPage({
         <div className="font-mono text-label uppercase tracking-wider text-ink-3">
           LiDAR audience · last 28 days
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-5">
           <MetricCard
             label="REACH"
             value={d.audience_30d.samples > 0 ? formatCount(d.audience_30d.avg_reach) : '—'}
@@ -148,8 +148,13 @@ export default async function OemDashboardPage({
           />
           <MetricCard
             label="AVG DWELL"
-            value={d.audience_30d.samples > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
+            value={d.audience_30d.avg_dwell_s > 0 ? `${d.audience_30d.avg_dwell_s}s` : '—'}
             context="time in view"
+          />
+          <MetricCard
+            label="NEAREST"
+            value={d.audience_30d.nearest_m != null ? `${d.audience_30d.nearest_m}m` : '—'}
+            context="closest approach"
           />
           <MetricCard
             label="AUDIENCE SAMPLES"

@@ -3,9 +3,9 @@ import Sidebar from './Sidebar';
 
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-page">
+    <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="w-full max-w-[1400px] flex-1 px-12 py-10">{children}</main>
+      <main className="min-w-0 flex-1 px-14 py-11">{children}</main>
     </div>
   );
 }

@@ -53,6 +53,12 @@ export interface Campaign {
   end_at: string | null;
   created_at: string;
   updated_at: string;
+  // Real per-campaign rollups from the impressions table (present on the
+  // /advertiser/v1/campaigns list response; optional elsewhere).
+  impressions_total?: number;
+  walked_by_total?: number;
+  attended_total?: number;
+  attention_rate?: number;
 }
 
 export interface RecentImpression {
@@ -69,7 +75,9 @@ export interface AudienceSummary {
   avg_reach: number;
   peak_reach: number;
   avg_attended: number;
+  // Sentinel: 0 means "no dwell data yet" (no column) — guard on the value.
   avg_dwell_s: number;
+  // Closest LiDAR approach (metres) during ads in the window; null => "—".
   nearest_m: number | null;
 }
 
@@ -82,7 +90,6 @@ export interface Dashboard {
   impressions_30d: number;
   spent_24h_cents: number;
   spent_30d_cents: number;
-  audience_24h: AudienceSummary;
   audience_30d: AudienceSummary;
   recent_impressions: RecentImpression[];
 }
@@ -99,6 +106,8 @@ export interface CampaignDetail {
     impressions_total: number;
     spent_cents_total: number;
     remaining_cents: number;
+    walked_by_total: number;
+    attended_total: number;
     by_day: CampaignDayStat[];
     audience_30d: AudienceSummary;
   };
@@ -164,7 +173,6 @@ export interface OemDashboard {
   total_fleets: number;
   total_robots: number;
   active_robots: number;
-  audience_24h: AudienceSummary;
   audience_30d: AudienceSummary;
   by_day: OemDayStat[];
   by_fleet: OemFleetStat[];
