@@ -12,16 +12,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [finishing, setFinishing] = useState(false);
+  const [isFleet, setIsFleet] = useState(false);
 
   const isSignup = mode === 'signup';
+  // Fleet operators (arrived via /login?kind=oem) onboard as a separate kind:
+  // after auth we send them to /oem/onboarding (which creates a kind='oem' org),
+  // not the advertiser default ('/' → /onboarding).
+  const postAuthNext = isFleet ? '/oem/onboarding' : '/';
 
   // Magic-link code that lands here (Supabase Site-URL fallback + proxy forward)
   // gets handed to the callback route that exchanges it for a session.
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('code');
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
     if (code) {
       setFinishing(true);
       window.location.replace(`/auth/callback?code=${encodeURIComponent(code)}`);
+      return;
+    }
+    // "Register a fleet" lands here as /login?kind=oem — switch to a fleet
+    // sign-up and carry that intent through to /oem/onboarding after auth.
+    if (params.get('kind') === 'oem') {
+      setIsFleet(true);
+      setMode('signup');
     }
   }, []);
 
@@ -39,7 +52,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(postAuthNext)}`,
         // Sign in must not silently create an account; sign up creates one.
         shouldCreateUser: isSignup,
       },
@@ -62,7 +75,7 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(postAuthNext)}` },
     });
     // On success the browser is redirected to Google, so we only reach
     // here if the request itself failed.
@@ -96,10 +109,14 @@ export default function LoginPage() {
         ) : (
           <>
             <h1 className="mt-6 font-serif text-h1 text-ink">
-              {isSignup ? 'Create your account.' : 'Welcome back.'}
+              {isFleet ? 'Register your fleet.' : isSignup ? 'Create your account.' : 'Welcome back.'}
             </h1>
             <p className="mt-2 text-ink-2">
-              {isSignup ? 'Start advertising on Kovio.' : 'Sign in to continue.'}
+              {isFleet
+                ? 'Create your operator account — next you’ll register your fleet.'
+                : isSignup
+                  ? 'Start advertising on Kovio.'
+                  : 'Sign in to continue.'}
             </p>
 
             <button
@@ -164,10 +181,21 @@ export default function LoginPage() {
               </button>
             </p>
             <p className="mt-2 text-center text-sm text-ink-2">
-              Operate a robot fleet?{' '}
-              <a href="/oem/onboarding" className="text-rust transition-colors hover:text-rust-dark">
-                Register a fleet
-              </a>
+              {isFleet ? (
+                <>
+                  Advertising a brand instead?{' '}
+                  <a href="/login" className="text-rust transition-colors hover:text-rust-dark">
+                    Sign up as an advertiser
+                  </a>
+                </>
+              ) : (
+                <>
+                  Operate a robot fleet?{' '}
+                  <a href="/login?kind=oem" className="text-rust transition-colors hover:text-rust-dark">
+                    Register a fleet
+                  </a>
+                </>
+              )}
             </p>
           </>
         )}
