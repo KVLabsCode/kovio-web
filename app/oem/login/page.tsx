@@ -5,8 +5,15 @@ import { createClient } from '@/lib/supabase/client';
 
 type Mode = 'signin' | 'signup';
 
-export default function LoginPage() {
-  const [mode, setMode] = useState<Mode>('signin');
+// Persisted so a fleet operator who authenticates is routed to OEM onboarding
+// even if Supabase falls back to the Site URL and drops the redirect's ?next=.
+// Root (app/page.tsx) reads this when a freshly-authenticated user has no org.
+function markOemIntent() {
+  document.cookie = 'kovio_onboard_kind=oem; path=/; max-age=3600; samesite=lax';
+}
+
+export default function OemLoginPage() {
+  const [mode, setMode] = useState<Mode>('signup');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,9 +21,8 @@ export default function LoginPage() {
   const [finishing, setFinishing] = useState(false);
 
   const isSignup = mode === 'signup';
+  const NEXT = '/oem/onboarding';
 
-  // Magic-link code that lands here (Supabase Site-URL fallback + proxy forward)
-  // gets handed to the callback route that exchanges it for a session.
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code');
     if (code) {
@@ -35,20 +41,19 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    markOemIntent();
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        // Sign in must not silently create an account; sign up creates one.
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(NEXT)}`,
         shouldCreateUser: isSignup,
       },
     });
     setLoading(false);
     if (error) {
-      // shouldCreateUser:false on an unknown email surfaces here — point them at sign up.
       if (!isSignup && /signups? not allowed|user not found|not exist/i.test(error.message)) {
-        setError('No Kovio account with that email. Try signing up instead.');
+        setError('No fleet account with that email. Try registering instead.');
       } else {
         setError(error.message);
       }
@@ -59,20 +64,21 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setError('');
+    markOemIntent();
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(NEXT)}`,
+      },
     });
-    // On success the browser is redirected to Google, so we only reach
-    // here if the request itself failed.
     if (error) setError(error.message);
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-[400px]">
-        <div className="font-mono text-xs uppercase tracking-wider text-ink-3">Kovio</div>
+        <div className="font-mono text-xs uppercase tracking-wider text-ink-3">Kovio for fleets</div>
 
         {finishing ? (
           <p className="mt-6 text-ink-2">Signing you in…</p>
@@ -80,7 +86,7 @@ export default function LoginPage() {
           <div className="mt-6">
             <h1 className="font-serif text-h2 text-ink">Check your email.</h1>
             <p className="mt-2 text-ink-2">
-              We sent a {isSignup ? 'sign-up' : 'sign-in'} link to{' '}
+              We sent a {isSignup ? 'registration' : 'sign-in'} link to{' '}
               <span className="text-ink">{email}</span>.
             </p>
             <button
@@ -96,10 +102,12 @@ export default function LoginPage() {
         ) : (
           <>
             <h1 className="mt-6 font-serif text-h1 text-ink">
-              {isSignup ? 'Create your account.' : 'Welcome back.'}
+              {isSignup ? 'Register your fleet.' : 'Welcome back, operator.'}
             </h1>
             <p className="mt-2 text-ink-2">
-              {isSignup ? 'Start advertising on Kovio.' : 'Sign in to continue.'}
+              {isSignup
+                ? 'Turn the screens on your robots into paid ad inventory.'
+                : 'Sign in to your fleet operator account.'}
             </p>
 
             <button
@@ -138,7 +146,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
-                placeholder="you@company.com"
+                placeholder="you@robotics.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-md border border-border-mid bg-card px-3 py-3 text-sm text-ink transition-colors focus:border-rust focus:outline-none"
@@ -148,19 +156,19 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full rounded-md bg-rust py-3 text-sm text-page transition-colors duration-200 hover:bg-rust-dark disabled:opacity-50"
               >
-                {loading ? 'Sending…' : isSignup ? 'Sign up with email' : 'Send magic link'}
+                {loading ? 'Sending…' : isSignup ? 'Register with email' : 'Send magic link'}
               </button>
               {error && <p className="text-sm text-danger">{error}</p>}
             </form>
 
             <p className="mt-6 text-center text-sm text-ink-2">
-              {isSignup ? 'Already have an account? ' : "Don't have an account? "}
+              {isSignup ? 'Already operate a fleet here? ' : 'New fleet operator? '}
               <button
                 type="button"
                 onClick={() => switchMode(isSignup ? 'signin' : 'signup')}
                 className="text-rust transition-colors hover:text-rust-dark"
               >
-                {isSignup ? 'Sign in' : 'Sign up'}
+                {isSignup ? 'Sign in' : 'Register'}
               </button>
             </p>
           </>

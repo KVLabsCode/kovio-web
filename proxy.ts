@@ -5,7 +5,7 @@ import { updateSession } from '@/lib/supabase/middleware';
 
 // `/r/` (tracked QR redirects) and `/creative/` (fleet-rendered ad creatives)
 // are reached by unauthenticated robots and phone scanners — they must stay public.
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/confirm', '/r/', '/creative/'];
+const PUBLIC_PATHS = ['/login', '/oem/login', '/auth/callback', '/auth/confirm', '/r/', '/creative/'];
 
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
@@ -14,11 +14,12 @@ export async function proxy(request: NextRequest) {
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    // Keep fleet operators in the OEM flow; everyone else to advertiser login.
+    url.pathname = pathname.startsWith('/oem') ? '/oem/login' : '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === '/login') {
+  if (user && (pathname === '/login' || pathname === '/oem/login')) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);

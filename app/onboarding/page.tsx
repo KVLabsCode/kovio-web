@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 
 function slugify(s: string): string {
@@ -114,12 +113,6 @@ export default function OnboardingPage() {
           </form>
           <p className="mt-4 text-[15px] text-muted">
             Your first campaign is on us — no card needed to launch.
-          </p>
-          <p className="mt-2 text-[15px] text-muted">
-            Operate a robot fleet instead?{' '}
-            <Link href="/oem/onboarding" className="text-accent hover:underline">
-              Register a fleet →
-            </Link>
           </p>
         </div>
       </div>

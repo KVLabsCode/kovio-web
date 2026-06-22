@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 
 function slugify(s: string): string {
@@ -114,12 +113,6 @@ export default function OemOnboardingPage() {
             </button>
             {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </form>
-          <p className="mt-4 text-[15px] text-muted">
-            Advertising a brand instead?{' '}
-            <Link href="/onboarding" className="text-accent hover:underline">
-              Get your brand on the road →
-            </Link>
-          </p>
         </div>
       </div>
     </div>
