@@ -101,6 +101,8 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   const [qualityLoading, setQualityLoading] = useState(false);
   const [qrPreview, setQrPreview] = useState('');
   const [resuming, setResuming] = useState(false);
+  const [resumeMsg, setResumeMsg] = useState('');
+  const [balanceCents, setBalanceCents] = useState<number | null>(null);
 
   // Render the QR for the current link locally so toggling/preview is instant
   // (the served creative at /creative/[code] regenerates it server-side).
@@ -129,6 +131,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     if (saved.draft) setDraft(saved.draft);
     if (saved.mode) setMode(saved.mode);
     window.history.replaceState({}, '', '/campaigns/new');
+
     if (resume === 'cancel') {
       localStorage.removeItem('kovio_wizard_resume');
       const keys =
@@ -136,7 +139,15 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           ? ['brand', 'setup', 'creative', 'review']
           : ['brand', 'details', 'creative', 'review', 'payment'];
       setStep(keys.length); // back to the payment step
-      setError('Payment canceled — you can try again.');
+      setError('Payment canceled — no charge was made. You can try again.');
+      return;
+    }
+
+    // resume === success but the saved draft is gone (e.g. paid in a different
+    // browser). The funds are safely on the balance — guide them to retry.
+    if (!saved.draft) {
+      localStorage.removeItem('kovio_wizard_resume');
+      setError('Payment received — your balance is funded. Create your campaign again to finish.');
       return;
     }
     setResuming(true);
@@ -145,32 +156,34 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   // Finalize a paid campaign after payment: retry create until the webhook has
   // credited the balance (deposit-to-balance keeps funds safe across the redirect).
   useEffect(() => {
-    if (!resuming) return;
+    if (!resuming || resumeMsg) return; // not attempting (idle or stalled awaiting retry)
     let cancelled = false;
     (async () => {
       for (let i = 0; i < 14 && !cancelled; i++) {
         const r = await doLaunch();
         if (r === 'ok') {
           localStorage.removeItem('kovio_wizard_resume');
-          return;
+          return; // doLaunch redirects to the campaign on success
         }
         if (r === 'fail') {
-          localStorage.removeItem('kovio_wizard_resume');
-          setResuming(false);
+          if (!cancelled)
+            setResumeMsg(
+              'We couldn’t finish your campaign, but your payment was received and your balance is funded — retry to finish.',
+            );
           return;
         }
         await new Promise((res) => setTimeout(res, 1800)); // 'retry': await the deposit webhook
       }
-      if (!cancelled) {
-        setResuming(false);
-        setError('Payment received and your balance is funded — click Launch to finish.');
-      }
+      if (!cancelled)
+        setResumeMsg(
+          'Payment received and your balance is funded. Finishing is taking longer than usual — retry now.',
+        );
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resuming]);
+  }, [resuming, resumeMsg]);
 
   async function checkQuality(url: string) {
     if (!url || !/^https?:\/\//i.test(url) || isVideoUrl(url)) {
@@ -242,8 +255,26 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   const stepKey = stepKeys[step - 1];
   const isFinal = step === stepKeys.length;
 
+  // On the paid Payment step, look up the current balance so we charge only the
+  // shortfall — and skip Stripe entirely when the balance already covers it.
+  useEffect(() => {
+    if (stepKey !== 'payment' || mode !== 'paid') return;
+    let active = true;
+    setBalanceCents(null);
+    apiClient.me().then(({ data }) => {
+      if (active) setBalanceCents(data?.org?.balance_cents ?? 0);
+    });
+    return () => {
+      active = false;
+    };
+  }, [stepKey, mode]);
+
   function set<K extends keyof Draft>(k: K, v: Draft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
+    // Editing any field clears a stale step error so it can't linger or follow
+    // the user to a later step.
+    if (error) setError('');
+    if (enrichErr) setEnrichErr('');
   }
   function switchMode(m: Mode) {
     setMode(m);
@@ -279,24 +310,51 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     }
   }
 
+  // Single source of truth for what each step requires. Returns an error
+  // message to show, or null when the step is complete.
+  function validateStep(key: string): string | null {
+    switch (key) {
+      case 'brand':
+        return brandStepReady(draft) ? null : 'Enter your website to continue.';
+      case 'setup':
+      case 'details':
+        if (!draft.name.trim()) return 'Give your campaign a name.';
+        if (mode === 'paid' && !(Number(draft.budget) > 0))
+          return 'Enter a budget greater than $0.';
+        return null;
+      case 'creative':
+        return draft.creative.trim()
+          ? null
+          : 'Add a creative — upload an image/MP4 or paste an image URL.';
+      default:
+        return null;
+    }
+  }
+
   async function next() {
-    if (stepKey === 'brand' && !brandStepReady(draft)) {
-      setEnrichErr('Enter your website to continue.');
+    const invalid = validateStep(stepKey);
+    if (invalid) {
+      setError(invalid);
       return;
     }
-    if (stepKey === 'creative' && !draft.creative.trim()) {
-      setError('Add a creative — upload an image/MP4 or paste an image URL.');
-      return;
-    }
+    setError(''); // step is valid — never carry an error forward
+
     if (isFinal) {
-      if (stepKey === 'payment') startPayment();
-      else launch();
-      return;
+      if (stepKey === 'payment') {
+        if (balanceCents === null) return; // balance still loading; button is disabled
+        if (dueCents && dueCents > 0) return startPayment(dueCents);
+        return launch(); // existing balance already covers the budget — no charge
+      }
+      return launch();
     }
+
     const nextKey = stepKeys[step]; // step is 1-based; stepKeys[step] is the next key
     if (nextKey === 'creative' && !draft.code) {
-      setError('');
-      const made = await createLink({ target_url: draft.website, image_url: draft.creative || null, show_qr: draft.showQr });
+      const made = await createLink({
+        target_url: draft.website,
+        image_url: draft.creative || null,
+        show_qr: draft.showQr,
+      });
       if (!('code' in made)) {
         setError('Could not prepare your creative. Please try again.');
         return;
@@ -307,6 +365,8 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   }
 
   function back() {
+    setError('');
+    setEnrichErr('');
     if (step === 1) router.push('/dashboard');
     else setStep((s) => Math.max(1, s - 1));
   }
@@ -338,6 +398,13 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     if (error) {
       // Paid campaign: the deposit webhook may not have credited yet — caller retries.
       if (error.code === 'insufficient_balance') return 'retry';
+      // A retry after a lost response: the campaign was already created last
+      // attempt (deterministic id hit the unique constraint). Treat as done.
+      if (error.code === 'campaign_id_taken') {
+        router.push('/dashboard');
+        router.refresh();
+        return 'ok';
+      }
       setError(error.detail ?? 'Could not launch the campaign. Please try again.');
       return 'fail';
     }
@@ -359,7 +426,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   // Paid: charge the campaign budget via Stripe Checkout in-flow, then return to
   // the wizard to finalize. Deposit-to-balance means the funds are safe even if
   // the round-trip is interrupted.
-  async function startPayment() {
+  async function startPayment(amountCents: number) {
     setLoading(true);
     setError('');
     if (draft.code) await updateLinkImage(draft.code, draft.creative || null, draft.showQr);
@@ -368,7 +435,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     } catch {
       /* private mode / quota — resume just won't auto-restore */
     }
-    const { data, error } = await apiClient.checkout(budgetCents, {
+    const { data, error } = await apiClient.checkout(amountCents, {
       success_path: '/campaigns/new?resume=1',
       cancel_path: '/campaigns/new?resume=cancel',
     });
@@ -398,6 +465,10 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
 
   const budgetDollars = `$${Number(draft.budget || 0).toLocaleString()}`;
   const budgetCents = Math.max(0, Math.round(Number(draft.budget || 0) * 100));
+  // What the buyer must actually pay now: budget minus any existing balance.
+  // null while the balance is still loading on the payment step.
+  const dueCents = balanceCents === null ? null : Math.max(0, budgetCents - balanceCents);
+  const dueDollars = `$${Math.round((dueCents ?? budgetCents) / 100).toLocaleString()}`;
 
   // ---- creative preview block ----
   const isImage = /^https?:\/\//i.test(draft.creative) && !/\.html?($|\?)/i.test(draft.creative);
@@ -529,8 +600,15 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
 
   // ---- footer ----
   function Footer() {
+    const paying = isFinal && stepKey === 'payment';
+    const willCharge = paying && !!dueCents && dueCents > 0;
     let rightLabel = 'Continue →';
-    if (isFinal) rightLabel = mode === 'trial' ? 'Launch campaign' : `Pay ${budgetDollars} →`;
+    if (isFinal && mode === 'trial') rightLabel = 'Launch campaign';
+    else if (paying) {
+      if (balanceCents === null) rightLabel = 'Checking balance…';
+      else rightLabel = willCharge ? `Pay ${dueDollars} →` : 'Launch campaign';
+    }
+    const loadingLabel = willCharge ? 'Redirecting…' : 'Launching…';
     return (
       <>
         <div className="mt-2 flex items-center justify-between">
@@ -540,10 +618,10 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           <button
             type="button"
             onClick={next}
-            disabled={loading}
+            disabled={loading || (paying && balanceCents === null)}
             className="rounded-[11px] bg-accent px-[30px] py-4 text-[17px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
-            {loading && isFinal ? (mode === 'trial' ? 'Launching…' : 'Redirecting…') : rightLabel}
+            {loading && isFinal ? loadingLabel : rightLabel}
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
@@ -579,14 +657,39 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
       <div className="flex min-h-screen items-center justify-center px-6 py-14">
         <div className="w-full max-w-[460px] rounded-[18px] border border-line bg-panel px-9 py-[44px] text-center">
           <div className="font-mono text-[13px] uppercase tracking-[0.16em] text-faint">Payment received</div>
-          <h1 className="mt-4 font-serif text-[34px] font-medium tracking-[-0.01em] text-ink">
-            Launching your campaign…
-          </h1>
-          <p className="mt-3 text-[15px] text-muted">
-            Confirming your payment with Stripe and starting your campaign — this takes a few
-            seconds.
-          </p>
-          <div className="mx-auto mt-6 h-6 w-6 animate-spin rounded-full border-2 border-line-strong border-t-accent" />
+          {resumeMsg ? (
+            <>
+              <h1 className="mt-4 font-serif text-[32px] font-medium tracking-[-0.01em] text-ink">
+                Almost there.
+              </h1>
+              <p className="mt-3 text-[15px] text-muted">{resumeMsg}</p>
+              <button
+                type="button"
+                onClick={() => setResumeMsg('')}
+                className="mt-6 w-full rounded-[11px] bg-accent px-6 py-3.5 text-[16px] font-semibold text-white transition-colors hover:bg-accent-dark"
+              >
+                Finish launching →
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="mt-3 text-[14px] text-muted transition-colors hover:text-ink"
+              >
+                Go to dashboard
+              </button>
+            </>
+          ) : (
+            <>
+              <h1 className="mt-4 font-serif text-[34px] font-medium tracking-[-0.01em] text-ink">
+                Launching your campaign…
+              </h1>
+              <p className="mt-3 text-[15px] text-muted">
+                Confirming your payment with Stripe and starting your campaign — this takes a few
+                seconds.
+              </p>
+              <div className="mx-auto mt-6 h-6 w-6 animate-spin rounded-full border-2 border-line-strong border-t-accent" />
+            </>
+          )}
         </div>
       </div>
     );
@@ -881,12 +984,24 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
               <div className="mb-[22px] font-mono text-[13px] uppercase tracking-[0.14em] text-faint">Payment</div>
               <div className="mb-[18px] flex items-center justify-between rounded-[13px] border border-line bg-panel-2 px-[22px] py-[18px]">
                 <span className="text-[16px] text-muted">Amount due now</span>
-                <span className="font-serif text-[30px] text-ink">{budgetDollars}</span>
+                <span className="font-serif text-[30px] text-ink">
+                  {balanceCents === null ? '—' : dueDollars}
+                </span>
               </div>
+              {balanceCents !== null && balanceCents > 0 && (
+                <div className="mb-[18px] flex items-center justify-between text-[14px] text-muted">
+                  <span>Campaign budget {budgetDollars}</span>
+                  <span>
+                    {`$${Math.round(Math.min(balanceCents, budgetCents) / 100).toLocaleString()}`} applied from balance
+                  </span>
+                </div>
+              )}
               <p className="mb-[18px] text-[15px] text-muted">
-                Tap <span className="text-ink">Pay {budgetDollars}</span> to pay your campaign
-                budget securely via Stripe — your campaign launches automatically right after.
-                You’re billed only as your ad actually plays; unspent budget stays on your balance.
+                {balanceCents === null
+                  ? 'Checking your balance…'
+                  : dueCents && dueCents > 0
+                    ? 'Pay securely via Stripe — your campaign launches automatically right after. You’re billed only as your ad actually plays; unspent budget stays on your balance.'
+                    : 'Your balance covers this campaign — no payment needed. Tap Launch to start; you’re billed only as your ad actually plays.'}
               </p>
               <div className="mb-7 font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
                 Secure checkout · Stripe · test mode

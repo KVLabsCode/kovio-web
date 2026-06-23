@@ -70,6 +70,7 @@ export interface CreateCampaignBody {
 }
 
 export const apiClient = {
+  me: () => call<MeResponse>('/advertiser/v1/me'),
   onboard: (body: OnboardBody) =>
     call<MeResponse>('/advertiser/v1/onboarding', {
       method: 'POST',

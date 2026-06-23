@@ -39,7 +39,9 @@ export function buildCampaignBody(args: {
   const startMs = new Date(draft.start + 'T00:00:00').getTime();
   const endIso = new Date(startMs + days * 86400000).toISOString();
   return {
-    campaign_id: `${slugify(draft.name)}-${rand(4).toLowerCase()}`,
+    // Deterministic from the (stable) link code so retrying a launch can't
+    // create a duplicate campaign — a second attempt hits the unique constraint.
+    campaign_id: `${slugify(draft.name)}-${(draft.code || rand(4)).toLowerCase()}`,
     name: draft.name.trim() || 'Untitled campaign',
     advertiser: draft.company.trim() || 'Brand',
     creative_url: creativeUrlFor(origin, draft.code),
@@ -47,7 +49,7 @@ export function buildCampaignBody(args: {
     priority: 10,
     encounter_cap_seconds: 300,
     category: draft.category,
-    budget_total_cents: mode === 'trial' ? 50000 : Number(draft.budget) * 100,
+    budget_total_cents: mode === 'trial' ? 50000 : Math.round(Number(draft.budget) * 100),
     cost_per_impression_cents: 10,
     cost_per_attended_cents: 5,
     start_at: new Date(draft.start + 'T00:00:00').toISOString(),
