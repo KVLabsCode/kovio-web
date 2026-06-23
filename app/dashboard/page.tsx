@@ -9,6 +9,27 @@ import HawkeyeTile from '@/components/HawkeyeTile';
 
 const RANGES = ['24H', '7D', '30D', 'ALL'];
 
+const GETTING_STARTED = [
+  {
+    n: '1',
+    title: 'Create your first campaign',
+    desc: 'Pick a name, drop a creative, launch in two minutes.',
+    link: 'Create campaign →',
+  },
+  {
+    n: '2',
+    title: 'Watch Hawkeye',
+    desc: 'See live footage of robots running your ad, with verified attention.',
+    link: 'See it live →',
+  },
+  {
+    n: '3',
+    title: 'Go paid when ready',
+    desc: 'Set your own budget per campaign after the free trial — pay only for what runs.',
+    link: 'Learn more →',
+  },
+];
+
 function greeting(d: Date): string {
   const h = d.getHours();
   if (h < 12) return 'Good morning';
@@ -167,18 +188,53 @@ export default async function DashboardPage({
         <h1 className="mt-2 font-serif text-[44px] font-medium leading-[1.05] tracking-[-0.02em] text-ink">
           {greeting(now)}, <em className="italic text-accent-dark">{brand}.</em>
         </h1>
-        <section className="mt-8 rounded-[18px] border border-dashed border-line-strong py-16 text-center">
-          <div className="font-serif text-[34px] text-ink">Launch your first campaign</div>
-          <p className="mx-auto mt-2 max-w-[440px] text-[17px] text-muted">
-            Your free trial covers one full campaign on a live citywide robot fleet — no card needed.
-          </p>
-          <Link
-            href="/campaigns/new"
-            className="mt-6 inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
-          >
-            + Create your first campaign
-          </Link>
-        </section>
+        <p className="mt-3 max-w-[640px] text-[18px] leading-[1.5] text-muted">
+          Your free trial covers <span className="text-ink">one full campaign</span> on a live citywide
+          robot fleet — no card needed. Let&apos;s get it running.
+        </p>
+
+        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
+          {/* Getting started */}
+          <section className="rounded-[18px] border border-line bg-panel px-8 py-7">
+            <div className="mb-6 font-mono text-[12px] uppercase tracking-[0.14em] text-faint">
+              Getting started
+            </div>
+            {GETTING_STARTED.map((step, i) => (
+              <div key={step.n} className={`flex gap-[18px] ${i < GETTING_STARTED.length - 1 ? 'mb-6' : ''}`}>
+                <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-tint font-mono text-[14px] text-accent-dark">
+                  {step.n}
+                </div>
+                <div>
+                  <div className="text-[18px] font-semibold text-ink">{step.title}</div>
+                  <div className="mt-0.5 text-[16px] leading-[1.45] text-muted">{step.desc}</div>
+                  <Link href="/campaigns/new" className="mt-1 inline-block text-[16px] text-accent-dark hover:text-accent">
+                    {step.link}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* Plan card */}
+          <section className="flex flex-col rounded-[18px] border border-tint-line bg-tint px-7 py-7">
+            <div className="flex items-start justify-between">
+              <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">Your plan</div>
+              <span className="rounded-[20px] bg-panel px-2.5 py-1 font-mono text-[11px] text-accent-dark">FREE TRIAL</span>
+            </div>
+            <div className="mt-4 font-serif text-[40px] leading-[1.04] text-ink">
+              Your first campaign, free
+            </div>
+            <p className="mb-auto mt-3 text-[15px] text-muted">
+              Launch the default citywide setup — no card needed until you go paid.
+            </p>
+            <Link
+              href="/campaigns/new"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent py-[15px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+            >
+              + Launch free campaign
+            </Link>
+          </section>
+        </div>
       </AppShell>
     );
   }
