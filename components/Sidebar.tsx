@@ -16,6 +16,7 @@ export default async function Sidebar() {
     const items: RailItem[] = [
       { label: 'Overview', href: '/dashboard', icon: 'overview' },
       { label: 'Campaigns', href: '/campaigns', icon: 'campaigns', count: dash.data?.total_campaigns },
+      { label: 'Reports', href: '/reports', icon: 'reports' },
     ];
     return (
       <RailSidebar

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type RailIcon = 'overview' | 'campaigns' | 'fleets';
+export type RailIcon = 'overview' | 'campaigns' | 'fleets' | 'reports';
 export type RailItem = { label: string; href: string; count?: number; icon: RailIcon };
 
 function Icon({ name }: { name: RailIcon }) {
@@ -16,6 +16,14 @@ function Icon({ name }: { name: RailIcon }) {
         <rect x="14" y="3" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
         <rect x="3" y="14" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
         <rect x="14" y="14" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+  if (name === 'reports') {
+    return (
+      <svg {...common} aria-hidden="true">
+        <path d="M5 19V5a1 1 0 0 1 1-1h9l4 4v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M9 13h6M9 16h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       </svg>
     );
   }
@@ -87,8 +95,8 @@ export default function RailSidebar({
 
   return (
     <aside
-      className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-line bg-bg px-5 py-[30px] transition-[width] duration-200 ease-out"
-      style={{ width: open ? 280 : 78 }}
+      className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-line bg-panel px-[18px] py-[26px] transition-[width] duration-200 ease-out"
+      style={{ width: open ? 264 : 78 }}
     >
       {/* rail toggle */}
       <button

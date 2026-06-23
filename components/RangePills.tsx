@@ -25,15 +25,13 @@ export default function RangePills({
   }
 
   return (
-    <div className="inline-flex gap-1.5">
+    <div className="inline-flex items-center gap-1 rounded-[11px] border border-line bg-panel p-1">
       {pills.map((p) => (
         <button
           key={p}
           onClick={() => select(p)}
-          className={`rounded-md border px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition-colors duration-200 ${
-            p === active
-              ? 'border-border-mid bg-card text-ink'
-              : 'border-border-soft bg-page text-ink-3 hover:text-ink'
+          className={`rounded-[8px] px-[14px] py-[7px] font-mono text-[12px] tracking-[0.04em] transition-colors duration-150 ${
+            p === active ? 'bg-accent text-white' : 'text-muted hover:text-ink'
           }`}
         >
           {p}

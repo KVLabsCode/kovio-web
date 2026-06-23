@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { KovioMark } from '@/components/KovioMark';
 
 function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -24,6 +25,13 @@ const VALUE_PROPS: Array<{ title: string; body: string }> = [
     title: 'Private by design',
     body: 'Faces never leave the robot. Only anonymous counts ever travel to Kovio.',
   },
+];
+
+const INCLUDED: Array<React.ReactNode> = [
+  <><span className="font-semibold text-ink">One full campaign</span> on a live citywide robot fleet.</>,
+  <><span className="font-semibold text-ink">Hawkeye live footage</span> &amp; verified attention data.</>,
+  <>Full reporting with <span className="font-semibold text-ink">AI analysis</span>.</>,
+  <>No credit card — add one only when you go paid.</>,
 ];
 
 export default function OnboardingPage() {
@@ -58,62 +66,101 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-16">
-      <div className="w-full max-w-[1040px]">
-        <div className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">Kovio</div>
+    <div className="min-h-screen bg-bg text-ink">
+      {/* top bar */}
+      <div className="mx-auto flex max-w-[1080px] items-center justify-between px-9 py-[22px]">
+        <div className="flex items-center gap-[11px]">
+          <KovioMark className="h-[22px] w-[22px] text-accent" />
+          <span className="font-mono text-[16px] tracking-[0.18em]">KOVIO</span>
+        </div>
+        <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
+          Step 1 of 2 · Set up
+        </div>
+      </div>
 
-        <h1 className="mt-8 max-w-[900px] font-serif text-[68px] font-medium leading-[1.02] tracking-[-0.02em] text-ink">
-          Advertising that <em className="italic text-accent">walks the city.</em>
+      <div className="mx-auto max-w-[1080px] px-9 pb-20 pt-9">
+        {/* free trial badge — fixed-dark surface */}
+        <div className="inline-flex items-center gap-[9px] rounded-full bg-[#332c24] px-4 py-2 text-[#f1ead9]">
+          <span className="k-pulse h-[7px] w-[7px] rounded-full bg-[#5cbe85]" />
+          <span className="font-mono text-[12px] uppercase tracking-[0.1em]">
+            Free trial · your first campaign is on us
+          </span>
+        </div>
+
+        <h1 className="mt-[22px] max-w-[900px] font-serif text-[clamp(44px,6vw,72px)] font-medium leading-[1.02] tracking-[-0.02em]">
+          Advertising that <em className="italic text-accent-dark">walks the city.</em>
         </h1>
-        <p className="mt-6 max-w-[680px] text-[22px] leading-[1.5] text-muted">
+        <p className="mt-[22px] max-w-[680px] text-[21px] leading-[1.5] text-muted">
           Kovio puts your brand on autonomous robots rolling through real streets — and shows you
           exactly who looked, measured frame-by-frame on the robot itself.
         </p>
 
-        {/* Value props */}
-        <div className="mt-12 grid grid-cols-3 gap-5">
+        {/* value props */}
+        <div className="mt-12 grid grid-cols-1 gap-[18px] sm:grid-cols-3">
           {VALUE_PROPS.map((v, i) => (
-            <div key={v.title} className="rounded-[16px] border border-line bg-panel px-7 py-6">
+            <div key={v.title} className="rounded-[16px] border border-line bg-panel p-[26px]">
               <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-tint font-mono text-[14px] text-accent-dark">
                 {i + 1}
               </div>
-              <div className="mt-4 text-[18px] font-semibold text-ink">{v.title}</div>
+              <div className="mt-4 text-[18px] font-semibold">{v.title}</div>
               <div className="mt-1.5 text-[15px] leading-[1.5] text-muted">{v.body}</div>
             </div>
           ))}
         </div>
 
-        {/* Brand capture */}
-        <div className="mt-12 max-w-[560px]">
-          <h2 className="font-serif text-[30px] font-medium tracking-[-0.01em] text-ink">
-            Let&apos;s get your brand on the road.
-          </h2>
-          <form onSubmit={handleSubmit} className="mt-6">
-            <label htmlFor="brand" className="mb-2 block text-[17px] text-ink">
-              Brand name
-            </label>
-            <input
-              id="brand"
-              type="text"
-              required
-              autoFocus
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="Your brand"
-              className="w-full rounded-[12px] border border-accent bg-field px-[22px] py-5 text-lg text-ink outline-none transition-colors focus:border-accent"
-            />
-            <button
-              type="submit"
-              disabled={loading || !brand.trim()}
-              className="mt-4 w-full rounded-[12px] bg-accent py-5 text-lg text-white transition-colors duration-200 hover:bg-accent-dark disabled:opacity-50"
-            >
-              {loading ? 'Setting up…' : 'Continue →'}
-            </button>
-            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-          </form>
-          <p className="mt-4 text-[15px] text-muted">
-            Your first campaign is on us — no card needed to launch.
-          </p>
+        {/* brand capture + trial */}
+        <div className="mt-12 grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <h2 className="font-serif text-[32px] font-medium tracking-[-0.01em]">
+              Let&apos;s get your brand on the road.
+            </h2>
+            <form onSubmit={handleSubmit} className="mt-[22px]">
+              <label htmlFor="brand" className="mb-2 block text-[16px]">
+                Brand name
+              </label>
+              <input
+                id="brand"
+                type="text"
+                required
+                autoFocus
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="Your brand"
+                className="w-full rounded-[12px] border border-accent bg-field px-5 py-[17px] text-[17px] text-ink outline-none transition-colors focus:border-accent-dark"
+              />
+              <button
+                type="submit"
+                disabled={loading || !brand.trim()}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[12px] bg-accent py-[17px] text-[17px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+              >
+                {loading ? 'Setting up…' : 'Start free trial →'}
+              </button>
+              {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+            </form>
+            <p className="mt-4 text-[15px] text-muted">
+              Your first campaign is on us — <span className="font-semibold text-ink">no card needed to launch.</span>
+            </p>
+          </div>
+
+          {/* trial summary card */}
+          <div className="rounded-[18px] border border-tint-line bg-tint p-[26px]">
+            <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-dark">
+              What&apos;s included free
+            </div>
+            <div className="mt-4 flex flex-col gap-[14px]">
+              {INCLUDED.map((node, i) => (
+                <div key={i} className="flex items-start gap-[11px]">
+                  <span className="mt-0.5 flex-none text-good">✓</span>
+                  <span className="text-[15px] leading-[1.45]">{node}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 border-t border-tint-line pt-[18px] text-[13px] text-muted">
+              After your free campaign, it&apos;s simple{' '}
+              <span className="font-semibold text-ink">pay-per-campaign</span> — billed to your card
+              only as campaigns run.
+            </div>
+          </div>
         </div>
       </div>
     </div>
