@@ -15,6 +15,7 @@ export function genCode(length = 8): string {
 export async function createLink(input: {
   target_url: string;
   image_url: string | null;
+  show_qr?: boolean;
 }): Promise<{ code: string } | { error: string }> {
   const code = genCode(8);
   const supabase = createClient();
@@ -22,6 +23,7 @@ export async function createLink(input: {
     code,
     target_url: input.target_url,
     image_url: input.image_url,
+    show_qr: input.show_qr ?? true,
   });
   if (error) return { error: error.message };
   return { code };
@@ -32,7 +34,13 @@ export async function attachCampaign(code: string, campaignId: string): Promise<
   await supabase.from('campaign_links').update({ campaign_id: campaignId }).eq('code', code);
 }
 
-export async function updateLinkImage(code: string, imageUrl: string | null): Promise<void> {
+export async function updateLinkImage(
+  code: string,
+  imageUrl: string | null,
+  showQr?: boolean,
+): Promise<void> {
   const supabase = createClient();
-  await supabase.from('campaign_links').update({ image_url: imageUrl }).eq('code', code);
+  const patch: { image_url: string | null; show_qr?: boolean } = { image_url: imageUrl };
+  if (showQr !== undefined) patch.show_qr = showQr;
+  await supabase.from('campaign_links').update(patch).eq('code', code);
 }

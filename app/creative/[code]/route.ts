@@ -29,9 +29,21 @@ export async function GET(
     });
   }
 
-  const svg = await qrSvg(`${origin}/r/${code}`);
-  const rawImage = row.image_url ?? '';
-  const image = /^https?:\/\//i.test(rawImage) ? rawImage : '';
+  const rawMedia = row.image_url ?? '';
+  const media = /^https?:\/\//i.test(rawMedia) ? rawMedia : '';
+  const isVideo = /\.(mp4|webm)(\?|#|$)/i.test(media);
+  // show_qr defaults to true when the column/row doesn't carry it.
+  const showQr = row.show_qr !== false;
+
+  const art = media
+    ? isVideo
+      ? `<video class="art" src="${escapeAttr(media)}" autoplay muted loop playsinline></video>`
+      : `<img class="art" src="${escapeAttr(media)}" alt="">`
+    : '';
+  const qr = showQr
+    ? `<div class="qr">${await qrSvg(`${origin}/r/${code}`)}<div class="scan">Scan me</div></div>`
+    : '';
+
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -44,8 +56,8 @@ export async function GET(
   .scan{margin-top:6px;text-align:center;font:600 14px system-ui,sans-serif;color:#111}
 </style></head>
 <body><div class="stage">
-  ${image ? `<img class="art" src="${escapeAttr(image)}" alt="">` : ''}
-  <div class="qr">${svg}<div class="scan">Scan me</div></div>
+  ${art}
+  ${qr}
 </div></body></html>`;
 
   return new Response(html, { status: 200, headers: HTML_HEADERS });

@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import QRCode from 'qrcode';
 import { apiClient } from '@/lib/api-client';
+import { createClient } from '@/lib/supabase/client';
 import { CATEGORIES, categoryLabel } from '@/lib/categories';
 import { buildCampaignBody, brandStepReady } from '@/lib/campaign-draft';
 import { createLink, attachCampaign, updateLinkImage } from '@/lib/links';
+
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const IMAGE_MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+const isVideoUrl = (u: string) => /\.(mp4|webm)(\?|#|$)/i.test(u);
 
 type Mode = 'trial' | 'paid';
 
@@ -22,6 +29,7 @@ interface Draft {
   when: 'morning' | 'evening' | 'all';
   days: 'every' | 'weekdays' | 'weekends';
   creative: string;
+  showQr: boolean;
   card: string;
   exp: string;
   cvc: string;
@@ -72,6 +80,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     when: 'all',
     days: 'every',
     creative: '',
+    showQr: true,
     card: '',
     exp: '',
     cvc: '',
@@ -86,6 +95,84 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+  const [quality, setQuality] = useState<{ verdict: 'good' | 'needs_work'; note: string } | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qrPreview, setQrPreview] = useState('');
+
+  // Render the QR for the current link locally so toggling/preview is instant
+  // (the served creative at /creative/[code] regenerates it server-side).
+  useEffect(() => {
+    if (!draft.code) {
+      setQrPreview('');
+      return;
+    }
+    QRCode.toDataURL(`${window.location.origin}/r/${draft.code}`, { margin: 1, width: 240 })
+      .then(setQrPreview)
+      .catch(() => setQrPreview(''));
+  }, [draft.code]);
+
+  async function checkQuality(url: string) {
+    if (!url || !/^https?:\/\//i.test(url) || isVideoUrl(url)) {
+      setQuality(null);
+      return;
+    }
+    setQuality(null);
+    setQualityLoading(true);
+    try {
+      const res = await fetch('/api/creative-quality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const body = await res.json();
+      if (res.ok && body?.verdict) setQuality(body);
+    } catch {
+      /* non-blocking: a failed quality check never stops the campaign */
+    } finally {
+      setQualityLoading(false);
+    }
+  }
+
+  async function handleFile(file: File) {
+    setUploadErr('');
+    setQuality(null);
+    const isVid = file.type === 'video/mp4';
+    const isImg = IMAGE_TYPES.includes(file.type);
+    if (!isImg && !isVid) {
+      setUploadErr('Use a PNG, JPG, WEBP, GIF, or MP4 file.');
+      return;
+    }
+    if (isImg && file.size > IMAGE_MAX_BYTES) {
+      setUploadErr('Image is over the 8 MB limit.');
+      return;
+    }
+    if (isVid && file.size > VIDEO_MAX_BYTES) {
+      setUploadErr('Video is over the 50 MB limit.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${draft.code || 'draft'}/${Date.now()}-${safe}`;
+      const { error: upErr } = await supabase.storage
+        .from('creatives')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) {
+        setUploadErr(upErr.message || 'Upload failed. Please try again.');
+        return;
+      }
+      const { data } = supabase.storage.from('creatives').getPublicUrl(path);
+      set('creative', data.publicUrl);
+      if (isImg) checkQuality(data.publicUrl);
+    } catch {
+      setUploadErr('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const stepKeys = mode === 'trial'
     ? ['brand', 'setup', 'creative', 'review']
@@ -142,7 +229,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     const nextKey = stepKeys[step]; // step is 1-based; stepKeys[step] is the next key
     if (nextKey === 'creative' && !draft.code) {
       setError('');
-      const made = await createLink({ target_url: draft.website, image_url: draft.creative || null });
+      const made = await createLink({ target_url: draft.website, image_url: draft.creative || null, show_qr: draft.showQr });
       if (!('code' in made)) {
         setError('Could not prepare your creative. Please try again.');
         return;
@@ -173,7 +260,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     setLoading(true);
     setError('');
     const origin = window.location.origin;
-    if (draft.code) await updateLinkImage(draft.code, draft.creative || null);
+    if (draft.code) await updateLinkImage(draft.code, draft.creative || null, draft.showQr);
     const body = buildCampaignBody({
       draft: {
         name: draft.name, company: draft.company, category: draft.category,
@@ -207,6 +294,19 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   // ---- creative preview block ----
   const isImage = /^https?:\/\//i.test(draft.creative) && !/\.html?($|\?)/i.test(draft.creative);
   function CreativeBox({ h }: { h: number }) {
+    if (draft.creative && isVideoUrl(draft.creative)) {
+      return (
+        <video
+          src={draft.creative}
+          className="w-full rounded-[12px] border-2 border-dashed border-line-strong object-cover"
+          style={{ height: h }}
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
+      );
+    }
     if (isImage) {
       return (
         <div
@@ -561,17 +661,91 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           {stepKey === 'creative' && (
             <>
               <div className="mb-[22px] font-mono text-[13px] uppercase tracking-[0.14em] text-faint">Creative</div>
-              {draft.code ? (
-                <iframe
-                  title="Creative preview"
-                  src={`/creative/${draft.code}`}
-                  className="mb-[22px] h-[340px] w-full rounded-[12px] border-2 border-dashed border-line-strong"
-                />
-              ) : (
-                <div className="mb-[22px]"><CreativeBox h={340} /></div>
+
+              {/* Live preview — image or MP4, with optional QR overlay */}
+              <div className="relative mb-[18px] flex h-[340px] w-full items-center justify-center overflow-hidden rounded-[12px] border-2 border-dashed border-line-strong bg-black">
+                {draft.creative ? (
+                  isVideoUrl(draft.creative) ? (
+                    <video src={draft.creative} className="h-full w-full object-cover" autoPlay muted loop playsInline />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={draft.creative} alt="" className="h-full w-full object-cover" />
+                  )
+                ) : (
+                  <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
+                    Upload or paste a creative
+                  </div>
+                )}
+                {draft.showQr && qrPreview && (
+                  <div className="absolute bottom-[4%] right-[4%] w-[22%] max-w-[150px] rounded-[12px] bg-white p-[2%] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrPreview} alt="QR code" className="block w-full" />
+                    <div className="mt-1 text-center text-[12px] font-semibold text-black">Scan me</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload + QR toggle */}
+              <div className="mb-2 flex flex-wrap items-center gap-3">
+                <label className={`cursor-pointer rounded-[11px] border px-4 py-3 text-[15px] transition-colors ${uploading ? 'border-line-strong text-muted' : 'border-line-strong text-ink hover:border-accent'}`}>
+                  {uploading ? 'Uploading…' : 'Upload image or MP4'}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFile(f);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => set('showQr', !draft.showQr)}
+                  className={`inline-flex items-center gap-2 rounded-[11px] border px-4 py-3 text-[15px] transition-colors ${draft.showQr ? 'border-accent bg-accent-soft font-semibold text-accent-dark' : 'border-line-strong text-ink hover:border-accent'}`}
+                >
+                  {draft.showQr ? '✓ QR code on' : 'Add QR code'}
+                  <span
+                    title="QR scan can reach your website directly"
+                    className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-current text-[11px] opacity-70"
+                  >
+                    i
+                  </span>
+                </button>
+              </div>
+              <div className="mb-3 text-[12px] text-faint">Images up to 8&nbsp;MB · MP4 up to 50&nbsp;MB</div>
+              {uploadErr && <p className="mb-3 text-[14px] text-danger">{uploadErr}</p>}
+
+              <label className="mb-2 block text-[15px] text-muted">…or paste an image URL</label>
+              <input
+                value={draft.creative}
+                onChange={(e) => set('creative', e.target.value)}
+                onBlur={(e) => checkQuality(e.target.value)}
+                placeholder="https://…"
+                className={`${inputCls} mb-3`}
+              />
+
+              {/* AI quality pointer (images only) */}
+              {qualityLoading && (
+                <p className="mb-[30px] text-[14px] text-muted">Checking creative quality…</p>
               )}
-              <label className="mb-2 block text-[17px] text-muted">…or paste an image URL</label>
-              <input value={draft.creative} onChange={(e) => set('creative', e.target.value)} placeholder="https://…" className={`${inputCls} mb-[30px]`} />
+              {quality && !qualityLoading && (
+                <div
+                  className={`mb-[30px] rounded-[11px] border px-4 py-3 text-[14px] ${
+                    quality.verdict === 'good'
+                      ? 'border-good/40 bg-good/10 text-good'
+                      : 'border-danger/40 bg-danger/10 text-danger'
+                  }`}
+                >
+                  {quality.verdict === 'good' ? '✓ ' : '⚠ '}
+                  {quality.note}
+                </div>
+              )}
+              {!quality && !qualityLoading && <div className="mb-[30px]" />}
+
               <Footer />
             </>
           )}
