@@ -7,13 +7,19 @@ import { buildInsights, hourlyDistribution } from '@/lib/insights';
 import AppShell from '@/components/AppShell';
 import IntelligencePanel from '@/components/IntelligencePanel';
 import ExportPdfButton from '@/components/ExportPdfButton';
+import CampaignPicker from '@/components/CampaignPicker';
 
 function hourLabel(h: number): string {
   if (h === 12) return '12p';
   return h < 12 ? `${h}a` : `${h - 12}p`;
 }
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campaign?: string }>;
+}) {
+  const { campaign: campaignId } = await searchParams;
   const [camps, dash] = await Promise.all([api.campaigns(), api.dashboard()]);
 
   if (dash.error?.status === 404) redirect('/onboarding');
@@ -29,18 +35,18 @@ export default async function ReportsPage() {
 
   const d = dash.data;
   const campaigns: Campaign[] = camps.data?.campaigns ?? [];
+  // When a campaign is picked, every stat below scopes to it.
+  const selected = campaignId ? campaigns.find((c) => c.id === campaignId) ?? null : null;
+  const scoped = selected ? [selected] : campaigns;
   const now = new Date();
   const monthLabel = now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   const generated = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const action = (
     <>
-      <div className="hidden items-center gap-2 rounded-[10px] border border-line bg-panel px-3.5 py-2.5 text-[14px] text-ink sm:flex">
-        All campaigns
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m6 9 6 6 6-6" className="stroke-faint" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
+      {campaigns.length > 0 && (
+        <CampaignPicker campaigns={campaigns.map((c) => ({ id: c.id, name: c.name }))} />
+      )}
       <ExportPdfButton />
     </>
   );
@@ -70,16 +76,16 @@ export default async function ReportsPage() {
     );
   }
 
-  const insight = buildInsights(campaigns, d);
-  const hours = hourlyDistribution(d);
+  const insight = buildInsights(scoped, d);
+  const hours = hourlyDistribution(d, selected?.id);
   const maxHour = Math.max(...hours.map((h) => h.count), 1);
   const hasHourly = hours.some((h) => h.count > 0);
   const peak = hours.reduce((a, b) => (b.count > a.count ? b : a), hours[0]);
 
   // Category mix by impression share (always available).
-  const totalImpr = campaigns.reduce((s, c) => s + (c.impressions_total ?? 0), 0) || 1;
+  const totalImpr = scoped.reduce((s, c) => s + (c.impressions_total ?? 0), 0) || 1;
   const byCategory = new Map<string, number>();
-  for (const c of campaigns) {
+  for (const c of scoped) {
     const k = c.category ?? 'general';
     byCategory.set(k, (byCategory.get(k) ?? 0) + (c.impressions_total ?? 0));
   }
@@ -90,12 +96,12 @@ export default async function ReportsPage() {
   const catColors = ['bg-accent', 'bg-accent-soft', 'bg-tint-line', 'bg-tint'];
 
   // Attention funnel (real top two stages; engagement/scan not tracked yet).
-  const passed = campaigns.reduce((s, c) => s + (c.walked_by_total ?? 0), 0);
-  const looked = campaigns.reduce((s, c) => s + (c.attended_total ?? 0), 0);
+  const passed = scoped.reduce((s, c) => s + (c.walked_by_total ?? 0), 0);
+  const looked = scoped.reduce((s, c) => s + (c.attended_total ?? 0), 0);
   const lookedPct = passed > 0 ? looked / passed : null;
 
   // Top campaigns by reach.
-  const topCampaigns = [...campaigns]
+  const topCampaigns = [...scoped]
     .sort((a, b) => (b.impressions_total ?? 0) - (a.impressions_total ?? 0))
     .slice(0, 4);
 

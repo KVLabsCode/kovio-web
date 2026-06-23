@@ -23,6 +23,7 @@ export default async function Sidebar() {
         ? [{ label: 'Hawkeye', href: `/campaigns/${latest.id}`, icon: 'hawkeye' as const, live: true }]
         : []),
       { label: 'Reports', href: '/reports', icon: 'reports' },
+      { label: 'Billing', href: '/billing', icon: 'billing' },
     ];
     return (
       <RailSidebar

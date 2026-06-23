@@ -4,12 +4,17 @@ import { api } from '@/lib/api';
 import { formatMoney, formatCount, formatPct, attentionRate } from '@/lib/format';
 import AppShell from '@/components/AppShell';
 
-export default async function CampaignsPage() {
+export default async function CampaignsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q: rawQ } = await searchParams;
   const { data, error } = await api.campaigns();
   if (error?.status === 404) redirect('/onboarding');
   if (error || !data) {
     return (
-      <AppShell>
+      <AppShell page="Campaigns">
         <p className="text-sm text-danger">
           Couldn’t load campaigns: {error?.detail ?? 'unknown error'}
         </p>
@@ -17,10 +22,12 @@ export default async function CampaignsPage() {
     );
   }
 
-  const campaigns = data.campaigns;
+  const q = (rawQ ?? '').trim();
+  const all = data.campaigns;
+  const campaigns = q ? all.filter((c) => c.name.toLowerCase().includes(q.toLowerCase())) : all;
 
   return (
-    <AppShell>
+    <AppShell page="Campaigns">
       <div className="flex items-end justify-between mb-[34px]">
         <div>
           <p className="font-mono text-[13px] uppercase tracking-[0.16em] text-faint">
@@ -30,7 +37,14 @@ export default async function CampaignsPage() {
             Campaigns.
           </h1>
           <p className="text-[19px] text-muted">
-            Manage your active and past campaigns.
+            {q ? (
+              <>
+                Results for <span className="text-ink">“{q}”</span> ·{' '}
+                <Link href="/campaigns" className="text-accent-dark hover:text-accent">clear</Link>
+              </>
+            ) : (
+              'Manage your active and past campaigns.'
+            )}
           </p>
         </div>
         <Link
@@ -41,7 +55,7 @@ export default async function CampaignsPage() {
         </Link>
       </div>
 
-      {campaigns.length === 0 ? (
+      {all.length === 0 ? (
         <div className="border border-dashed border-line-strong rounded-[18px] py-16 text-center">
           <p className="font-serif text-[32px] text-ink">No campaigns yet</p>
           <p className="text-[18px] text-muted mt-2">
@@ -52,6 +66,13 @@ export default async function CampaignsPage() {
             className="inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark mt-6"
           >
             + New campaign
+          </Link>
+        </div>
+      ) : campaigns.length === 0 ? (
+        <div className="rounded-[18px] border border-dashed border-line-strong py-16 text-center">
+          <p className="font-serif text-[28px] text-ink">No campaigns match “{q}”.</p>
+          <Link href="/campaigns" className="mt-4 inline-block text-[16px] text-accent-dark hover:text-accent">
+            Clear search
           </Link>
         </div>
       ) : (

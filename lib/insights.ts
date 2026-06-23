@@ -35,11 +35,14 @@ function rateOf(c: Campaign): number | null {
 }
 
 export function buildInsights(campaigns: Campaign[], dash: Dashboard): Insight {
-  const analyzed = dash.impressions_30d || campaigns.reduce((s, c) => s + (c.impressions_total ?? 0), 0);
+  // Derive from the passed campaigns so insights are correct whether the caller
+  // shows all campaigns or filters to one (the Reports dropdown).
+  const sumImpr = campaigns.reduce((s, c) => s + (c.impressions_total ?? 0), 0);
+  const analyzed = sumImpr || dash.impressions_30d;
   const totalWalked = campaigns.reduce((s, c) => s + (c.walked_by_total ?? 0), 0);
   const totalAttended = campaigns.reduce((s, c) => s + (c.attended_total ?? 0), 0);
   const overallAtt = attentionRate({ walked_by_total: totalWalked, attended_total: totalAttended });
-  const totalSpend = dash.spent_30d_cents;
+  const totalSpend = campaigns.reduce((s, c) => s + (c.budget_spent_cents ?? 0), 0) || dash.spent_30d_cents;
   const dwell = dash.audience_30d.avg_dwell_s;
 
   // Rank by reach and by attention quality.
@@ -119,9 +122,15 @@ export function buildInsights(campaigns: Campaign[], dash: Dashboard): Insight {
 }
 
 // Activity-by-hour distribution from recent verified events (real, sampled).
-export function hourlyDistribution(dash: Dashboard): { hour: number; count: number }[] {
+export function hourlyDistribution(
+  dash: Dashboard,
+  campaignId?: string,
+): { hour: number; count: number }[] {
   const buckets = new Array(24).fill(0);
-  for (const r of dash.recent_impressions) {
+  const events = campaignId
+    ? dash.recent_impressions.filter((r) => r.campaign_id === campaignId)
+    : dash.recent_impressions;
+  for (const r of events) {
     const t = new Date(r.timestamp);
     if (!Number.isNaN(t.getTime())) buckets[t.getHours()] += 1;
   }
