@@ -24,7 +24,7 @@ export default async function Sidebar() {
       ...(hasCampaign
         ? [{ label: 'Hawkeye', href: '/hawkeye', icon: 'hawkeye' as const, live: hasLive }]
         : []),
-      { label: 'Reports', href: '/reports', icon: 'reports' },
+      { label: 'Insights', href: '/insights', icon: 'reports' },
       { label: 'Billing', href: '/billing', icon: 'billing' },
     ];
     return (
