@@ -14,7 +14,7 @@ export default async function DepositPage({
       <SectionHeader
         label="DEPOSIT FUNDS"
         greeting="Add funds."
-        subtitle="Top up your balance via Stripe — campaigns draw from it as they run."
+        subtitle="Top up your balance via Stripe. Campaigns draw from it as they run."
       />
 
       {status === 'success' && (

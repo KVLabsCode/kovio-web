@@ -139,7 +139,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           ? ['brand', 'setup', 'creative', 'review']
           : ['brand', 'details', 'creative', 'review', 'payment'];
       setStep(keys.length); // back to the payment step
-      setError('Payment canceled — no charge was made. You can try again.');
+      setError('Payment canceled. No charge was made, you can try again.');
       return;
     }
 
@@ -147,7 +147,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     // browser). The funds are safely on the balance — guide them to retry.
     if (!saved.draft) {
       localStorage.removeItem('kovio_wizard_resume');
-      setError('Payment received — your balance is funded. Create your campaign again to finish.');
+      setError('Payment received. Your balance is funded, create your campaign again to finish.');
       return;
     }
     setResuming(true);
@@ -168,7 +168,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
         if (r === 'fail') {
           if (!cancelled)
             setResumeMsg(
-              'We couldn’t finish your campaign, but your payment was received and your balance is funded — retry to finish.',
+              'We couldn’t finish your campaign, but your payment was received and your balance is funded. Retry to finish.',
             );
           return;
         }
@@ -176,7 +176,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
       }
       if (!cancelled)
         setResumeMsg(
-          'Payment received and your balance is funded. Finishing is taking longer than usual — retry now.',
+          'Payment received and your balance is funded. Finishing is taking longer than usual. Retry now.',
         );
     })();
     return () => {
@@ -249,11 +249,17 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   const stepKeys = mode === 'trial'
     ? ['brand', 'setup', 'creative', 'review']
     : ['brand', 'details', 'creative', 'review', 'payment'];
-  const stepLabels = mode === 'trial'
-    ? ['Brand', 'Setup', 'Creative', 'Review']
-    : ['Brand', 'Details', 'Creative', 'Review', 'Payment'];
   const stepKey = stepKeys[step - 1];
   const isFinal = step === stepKeys.length;
+
+  const STEP_META: Record<string, { label: string; subtitle: string; title: string }> = {
+    brand: { label: 'Basics', subtitle: 'Your site & brand', title: 'Campaign basics.' },
+    setup: { label: 'Setup', subtitle: 'Name & default', title: 'Quick setup.' },
+    details: { label: 'Details', subtitle: 'Name, budget & schedule', title: 'Campaign details.' },
+    creative: { label: 'Creative', subtitle: 'What robots show', title: 'Build your creative.' },
+    review: { label: 'Review', subtitle: 'Check & confirm', title: 'Review campaign.' },
+    payment: { label: 'Budget & launch', subtitle: 'Pay & go live', title: 'Budget & launch.' },
+  };
 
   // On the paid Payment step, look up the current balance so we charge only the
   // shortfall — and skip Stripe entirely when the balance already covers it.
@@ -325,7 +331,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
       case 'creative':
         return draft.creative.trim()
           ? null
-          : 'Add a creative — upload an image/MP4 or paste an image URL.';
+          : 'Add a creative: upload an image/MP4 or paste an image URL.';
       default:
         return null;
     }
@@ -565,32 +571,31 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     );
   }
 
-  // ---- progress rail ----
-  function Rail() {
+  // ---- vertical stepper (design: numbered dots + title/subtitle + connectors) ----
+  function Stepper() {
     return (
-      <div className="mb-[26px] flex items-center justify-center">
-        {stepLabels.map((label, i) => {
+      <div className="hidden flex-col gap-1 lg:sticky lg:top-[88px] lg:flex">
+        {stepKeys.map((k, i) => {
           const n = i + 1;
-          const state = n < step ? 'done' : n === step ? 'active' : 'todo';
+          const active = n === step;
+          const done = n < step;
+          const m = STEP_META[k];
           return (
-            <div key={label} className="flex items-center">
-              {i > 0 && <div className="mx-3 h-px w-10 bg-line-strong" />}
-              <div className="flex items-center">
-                <div
-                  className={`flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full font-mono text-[14px] ${
-                    state === 'todo' ? 'bg-accent-soft text-accent-dark' : 'bg-accent text-white'
+            <div key={k}>
+              <div className="flex items-start gap-3 p-2" style={{ opacity: active ? 1 : done ? 0.9 : 0.5 }}>
+                <span
+                  className={`flex h-7 w-7 flex-none items-center justify-center rounded-full font-mono text-[13px] ${
+                    n <= step ? 'bg-accent text-white' : 'bg-panel-2 text-faint'
                   }`}
                 >
                   {n}
-                </div>
-                <div
-                  className={`ml-2.5 text-[16px] ${
-                    state === 'active' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink' : 'text-muted'
-                  }`}
-                >
-                  {label}
+                </span>
+                <div>
+                  <div className="text-[15px] font-semibold text-ink">{m.label}</div>
+                  <div className="text-[13px] text-faint">{m.subtitle}</div>
                 </div>
               </div>
+              {i < stepKeys.length - 1 && <div className="ml-[21px] h-3.5 w-px bg-line" />}
             </div>
           );
         })}
@@ -611,15 +616,15 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     const loadingLabel = willCharge ? 'Redirecting…' : 'Launching…';
     return (
       <>
-        <div className="mt-2 flex items-center justify-between">
-          <button type="button" onClick={back} className="rounded-[10px] px-[18px] py-3.5 text-ink transition-colors hover:bg-panel">
+        <div className="mt-[30px] flex items-center justify-between border-t border-line pt-[22px]">
+          <button type="button" onClick={back} className="rounded-[11px] border border-line-strong bg-panel px-5 py-3 text-[15px] text-ink transition-colors hover:bg-panel-2">
             {step === 1 ? 'Cancel' : '← Back'}
           </button>
           <button
             type="button"
             onClick={next}
             disabled={loading || (paying && balanceCents === null)}
-            className="rounded-[11px] bg-accent px-[30px] py-4 text-[17px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[11px] bg-accent px-6 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
             {loading && isFinal ? loadingLabel : rightLabel}
           </button>
@@ -684,7 +689,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
                 Launching your campaign…
               </h1>
               <p className="mt-3 text-[15px] text-muted">
-                Confirming your payment with Stripe and starting your campaign — this takes a few
+                Confirming your payment with Stripe and starting your campaign. This takes a few
                 seconds.
               </p>
               <div className="mx-auto mt-6 h-6 w-6 animate-spin rounded-full border-2 border-line-strong border-t-accent" />
@@ -696,20 +701,19 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-14">
-      <div className="w-full max-w-[680px]">
-        {/* header */}
-        <div className="mb-7">
-          <div className="text-center font-mono text-[13px] uppercase tracking-[0.16em] text-faint">Create campaign</div>
-          <h1 className="mt-3.5 text-center font-serif text-[54px] font-medium leading-[1.02] tracking-[-0.02em] text-ink">
-            New <em className="italic">campaign.</em>
-          </h1>
-        </div>
+    <div className="mx-auto max-w-[1060px]">
+      {/* header */}
+      <div className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
+        New campaign · Step {step} of {stepKeys.length}
+      </div>
+      <h1 className="mt-2 font-serif text-[44px] font-medium leading-[1.04] tracking-[-0.02em] text-ink">
+        {STEP_META[stepKey].title}
+      </h1>
+      {step === 1 && trialAvailable && <div className="mt-6 max-w-[560px]">{modeTabs}</div>}
 
-        <Rail />
-
-        <div className="rounded-[18px] border border-line bg-panel px-9 py-[34px]">
-          {step === 1 && trialAvailable && modeTabs}
+      <div className="mt-[34px] grid grid-cols-1 gap-10 lg:grid-cols-[230px_1fr] lg:items-start">
+        <Stepper />
+        <div className="rounded-[18px] border border-line bg-panel p-8">
 
           {/* BRAND */}
           {stepKey === 'brand' && (
@@ -758,7 +762,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
                 <div>
                   <div className="text-[19px] font-semibold text-accent-dark">Your first campaign is free</div>
                   <div className="text-[14px] text-accent-dark/80">
-                    We&apos;ve set up a citywide default — just name it and launch. No card needed.
+                    We&apos;ve set up a citywide default. Just name it and launch, no card needed.
                   </div>
                 </div>
               </div>
@@ -1000,8 +1004,8 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
                 {balanceCents === null
                   ? 'Checking your balance…'
                   : dueCents && dueCents > 0
-                    ? 'Pay securely via Stripe — your campaign launches automatically right after. You’re billed only as your ad actually plays; unspent budget stays on your balance.'
-                    : 'Your balance covers this campaign — no payment needed. Tap Launch to start; you’re billed only as your ad actually plays.'}
+                    ? 'Pay securely via Stripe. Your campaign launches automatically right after. You’re billed only as your ad actually plays; unspent budget stays on your balance.'
+                    : 'Your balance covers this campaign. No payment needed; tap Launch to start. You’re billed only as your ad actually plays.'}
               </p>
               <div className="mb-7 font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
                 Secure checkout · Stripe · test mode

@@ -93,7 +93,7 @@ export default function LoginPage() {
             Advertising that <em className="italic text-[#d38b50]">walks the city.</em>
           </h1>
           <p className="mt-5 text-[18px] leading-[1.55] text-[#b6ac95]">
-            Put your brand on autonomous robots rolling through real streets — and see exactly who
+            Put your brand on autonomous robots rolling through real streets, and see exactly who
             looked, measured frame-by-frame on the robot itself.
           </p>
           <div className="mt-10 flex flex-col gap-[18px]">
@@ -159,7 +159,7 @@ export default function LoginPage() {
               </h2>
               <p className="mt-2 text-[16px] text-muted">
                 {isSignup
-                  ? 'Start with your first campaign free — no card required.'
+                  ? 'Start with your first campaign free. No card required.'
                   : 'Sign in to manage your campaigns.'}
               </p>
 

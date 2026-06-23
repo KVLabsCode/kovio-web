@@ -25,7 +25,7 @@ const GETTING_STARTED = [
   {
     n: '3',
     title: 'Go paid when ready',
-    desc: 'Set your own budget per campaign after the free trial — pay only for what runs.',
+    desc: 'Set your own budget per campaign after the free trial. Pay only for what runs.',
     link: 'Learn more →',
   },
 ];
@@ -189,8 +189,9 @@ export default async function DashboardPage({
           {greeting(now)}, <em className="italic text-accent-dark">{brand}.</em>
         </h1>
         <p className="mt-3 max-w-[640px] text-[18px] leading-[1.5] text-muted">
-          Your free trial covers <span className="text-ink">one full campaign</span> on a live citywide
-          robot fleet — no card needed. Let&apos;s get it running.
+          Your free trial covers{' '}
+          <span className="text-ink">one full campaign</span>{' '}
+          on a live citywide robot fleet. No card needed, let&apos;s get it running.
         </p>
 
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
@@ -225,7 +226,7 @@ export default async function DashboardPage({
               Your first campaign, free
             </div>
             <p className="mb-auto mt-3 text-[15px] text-muted">
-              Launch the default citywide setup — no card needed until you go paid.
+              Launch the default citywide setup. No card needed until you go paid.
             </p>
             <Link
               href="/campaigns/new"

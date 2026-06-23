@@ -19,7 +19,7 @@ const VALUE_PROPS: Array<{ title: string; body: string }> = [
   },
   {
     title: 'Verified attention',
-    body: 'On-device vision + LiDAR count who actually looked — measured, never estimated.',
+    body: 'On-device vision + LiDAR count who actually looked. Measured, never estimated.',
   },
   {
     title: 'Private by design',
@@ -31,7 +31,7 @@ const INCLUDED: Array<React.ReactNode> = [
   <><span className="font-semibold text-ink">One full campaign</span> on a live citywide robot fleet.</>,
   <><span className="font-semibold text-ink">Hawkeye live footage</span> &amp; verified attention data.</>,
   <>Full reporting with <span className="font-semibold text-ink">AI analysis</span>.</>,
-  <>No credit card — add one only when you go paid.</>,
+  <>No credit card. Add one only when you go paid.</>,
 ];
 
 export default function OnboardingPage() {
@@ -91,7 +91,7 @@ export default function OnboardingPage() {
           Advertising that <em className="italic text-accent-dark">walks the city.</em>
         </h1>
         <p className="mt-[22px] max-w-[680px] text-[21px] leading-[1.5] text-muted">
-          Kovio puts your brand on autonomous robots rolling through real streets — and shows you
+          Kovio puts your brand on autonomous robots rolling through real streets, and shows you
           exactly who looked, measured frame-by-frame on the robot itself.
         </p>
 
@@ -138,7 +138,7 @@ export default function OnboardingPage() {
               {error && <p className="mt-3 text-sm text-danger">{error}</p>}
             </form>
             <p className="mt-4 text-[15px] text-muted">
-              Your first campaign is on us — <span className="font-semibold text-ink">no card needed to launch.</span>
+              Your first campaign is on us. <span className="font-semibold text-ink">No card needed to launch.</span>
             </p>
           </div>
 
@@ -157,7 +157,7 @@ export default function OnboardingPage() {
             </div>
             <div className="mt-5 border-t border-tint-line pt-[18px] text-[13px] text-muted">
               After your free campaign, it&apos;s simple{' '}
-              <span className="font-semibold text-ink">pay-per-campaign</span> — billed to your card
+              <span className="font-semibold text-ink">pay-per-campaign</span>, billed to your card
               only as campaigns run.
             </div>
           </div>

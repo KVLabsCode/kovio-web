@@ -77,7 +77,7 @@ export function buildInsights(campaigns: Campaign[], dash: Dashboard): Insight {
     findings.push({
       stat: formatPct(rateOf(best)!),
       title: `${best.name} wins attention`,
-      body: 'Your highest verified-attention campaign — a strong template for the rest of the roster.',
+      body: 'Your highest verified-attention campaign. A strong template for the rest of the roster.',
     });
   }
   findings.push({
@@ -85,12 +85,12 @@ export function buildInsights(campaigns: Campaign[], dash: Dashboard): Insight {
     title: 'Dwell on look',
     body: dwell > 0
       ? 'Average time a viewer held attention, measured on-device by LiDAR.'
-      : 'No dwell telemetry yet — it appears here once your fleet reports it.',
+      : 'No dwell telemetry yet. It appears here once your fleet reports it.',
   });
   findings.push({
     stat: formatCount(totalWalked),
     title: 'People reached',
-    body: `${formatCount(totalAttended)} of them actually looked — the top of your verified funnel.`,
+    body: `${formatCount(totalAttended)} of them actually looked. The top of your verified funnel.`,
   });
 
   // ---- Recommended actions (data-grounded, honest impact) ----
@@ -110,7 +110,7 @@ export function buildInsights(campaigns: Campaign[], dash: Dashboard): Insight {
     });
   }
   actions.push({
-    title: 'Keep creatives short — aim for ≤ 6 seconds.',
+    title: 'Keep creatives short, aim for ≤ 6 seconds.',
     rationale: 'Shorter spots hold attention through the dwell window.',
     impact: 'more completed looks',
   });
