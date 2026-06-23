@@ -8,15 +8,21 @@ export default function CampaignPicker({
   campaigns,
   param = 'campaign',
   allLabel = 'All campaigns',
+  allowAll = true,
+  value,
 }: {
   campaigns: { id: string; name: string }[];
   param?: string;
   allLabel?: string;
+  // When false, omit the "All" option (a single campaign is always selected).
+  allowAll?: boolean;
+  // Optional controlled value (e.g. a resolved default) when there's no param.
+  value?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const current = searchParams.get(param) ?? '';
+  const current = value ?? searchParams.get(param) ?? '';
 
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = new URLSearchParams(searchParams.toString());
@@ -34,7 +40,7 @@ export default function CampaignPicker({
         aria-label="Select campaign"
         className="cursor-pointer appearance-none rounded-[10px] border border-line bg-panel py-2.5 pl-3.5 pr-9 text-[14px] text-ink outline-none transition-colors hover:bg-panel-2 focus:border-accent"
       >
-        <option value="">{allLabel}</option>
+        {allowAll && <option value="">{allLabel}</option>}
         {campaigns.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}

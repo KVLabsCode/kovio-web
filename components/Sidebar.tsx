@@ -13,14 +13,16 @@ export default async function Sidebar() {
 
   if (me.data) {
     const [dash, camps] = await Promise.all([api.dashboard(), api.campaigns()]);
-    // Hawkeye is the live view of a running campaign. Once at least one campaign
-    // exists, link it to the most recent one (the list is created_at DESC).
-    const latest = camps.data?.campaigns?.[0];
+    // Hawkeye is the live view; it opens once a campaign exists and pulses LIVE
+    // while any campaign is active. The /hawkeye page has its own campaign picker.
+    const list = camps.data?.campaigns ?? [];
+    const hasCampaign = list.length > 0;
+    const hasLive = list.some((c) => c.status === 'active');
     const items: RailItem[] = [
       { label: 'Overview', href: '/dashboard', icon: 'overview' },
       { label: 'Campaigns', href: '/campaigns', icon: 'campaigns', count: dash.data?.total_campaigns },
-      ...(latest
-        ? [{ label: 'Hawkeye', href: `/campaigns/${latest.id}`, icon: 'hawkeye' as const, live: true }]
+      ...(hasCampaign
+        ? [{ label: 'Hawkeye', href: '/hawkeye', icon: 'hawkeye' as const, live: hasLive }]
         : []),
       { label: 'Reports', href: '/reports', icon: 'reports' },
       { label: 'Billing', href: '/billing', icon: 'billing' },
