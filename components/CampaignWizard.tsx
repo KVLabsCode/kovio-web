@@ -754,25 +754,26 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           {stepKey === 'payment' && (
             <>
               <div className="mb-[22px] font-mono text-[13px] uppercase tracking-[0.14em] text-faint">Payment</div>
-              <div className="mb-[26px] flex items-center justify-between rounded-[13px] border border-line bg-panel-2 px-[22px] py-[18px]">
+              <div className="mb-[22px] flex items-center justify-between rounded-[13px] border border-line bg-panel-2 px-[22px] py-[18px]">
                 <span className="text-[16px] text-muted">Campaign budget</span>
                 <span className="font-serif text-[30px] text-ink">{budgetDollars}</span>
               </div>
-              <label className={labelCls}>Name on card</label>
-              <input value={draft.cardName} onChange={(e) => set('cardName', e.target.value)} placeholder="Jane Appleseed" className={`${inputCls} mb-4`} />
-              <label className={labelCls}>Card number</label>
-              <input value={draft.card} onChange={(e) => set('card', e.target.value)} placeholder="4242 4242 4242 4242" className={`${inputCls} mb-4 font-mono`} />
-              <div className="grid grid-cols-2 gap-[18px]">
-                <div>
-                  <label className={labelCls}>Expiry</label>
-                  <input value={draft.exp} onChange={(e) => set('exp', e.target.value)} placeholder="MM / YY" className={`${inputCls} font-mono`} />
-                </div>
-                <div>
-                  <label className={labelCls}>CVC</label>
-                  <input value={draft.cvc} onChange={(e) => set('cvc', e.target.value)} placeholder="123" className={`${inputCls} font-mono`} />
-                </div>
+              <p className="mb-[18px] text-[15px] text-muted">
+                Paid campaigns are funded from your Kovio balance and billed only as your ad
+                actually plays. Add funds securely via Stripe in a new tab, then come back and
+                launch — nothing extra is charged on this step.
+              </p>
+              <a
+                href="/deposit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-4 inline-flex items-center gap-2 rounded-[11px] bg-accent px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent-dark"
+              >
+                Add funds with Stripe →
+              </a>
+              <div className="mb-7 font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
+                Secure checkout · Stripe
               </div>
-              <div className="mb-7 mt-7 font-mono text-[12px] uppercase tracking-[0.1em] text-faint">Test mode · no real charge</div>
               <Footer />
             </>
           )}

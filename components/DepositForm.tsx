@@ -1,52 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
 
 const PRESETS_CENTS = [2500, 10000, 50000];
 
 export default function DepositForm() {
-  const router = useRouter();
   const [amountCents, setAmountCents] = useState<number>(10000);
   const [customUsd, setCustomUsd] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState<{ added: number; balance: number } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const { data, error } = await apiClient.deposit(amountCents);
-    setLoading(false);
+    const { data, error } = await apiClient.checkout(amountCents);
     if (error) {
+      setLoading(false);
       if (error.code === 'amount_too_large') setError('Amount exceeds the $10,000 cap.');
       else if (error.code === 'invalid_amount') setError('Enter an amount greater than $0.');
+      else if (error.code === 'stripe_unconfigured')
+        setError('Payments aren’t enabled yet. Please try again shortly.');
       else setError(error.detail ?? 'Something went wrong.');
       return;
     }
-    setDone({ added: amountCents, balance: data!.balance_cents });
-    router.refresh();
-  }
-
-  if (done) {
-    return (
-      <div className="max-w-md rounded-lg border border-border-soft bg-card p-6">
-        <h3 className="font-serif text-h2 text-ink">Added {formatMoney(done.added)}.</h3>
-        <p className="mt-2 text-ink-2">
-          New balance: <span className="text-ink">{formatMoney(done.balance)}</span>.
-        </p>
-        <Link
-          href="/dashboard"
-          className="mt-4 inline-block text-sm text-rust transition-colors hover:text-rust-dark"
-        >
-          Back to dashboard →
-        </Link>
-      </div>
-    );
+    if (data?.url) {
+      // Hand off to Stripe Checkout; balance is credited by the webhook on return.
+      window.location.href = data.url;
+      return;
+    }
+    setLoading(false);
+    setError('Could not start checkout. Please try again.');
   }
 
   return (
@@ -95,9 +81,14 @@ export default function DepositForm() {
         disabled={loading || amountCents <= 0}
         className="mt-4 w-full rounded-md bg-rust py-3 text-sm text-page transition-colors duration-200 hover:bg-rust-dark disabled:opacity-50"
       >
-        {loading ? 'Processing…' : `Add ${formatMoney(amountCents > 0 ? amountCents : 0)} to balance`}
+        {loading
+          ? 'Redirecting to Stripe…'
+          : `Pay ${formatMoney(amountCents > 0 ? amountCents : 0)} with Stripe`}
       </button>
       {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      <p className="mt-3 text-xs text-ink-3">
+        Secure payment via Stripe. You’ll return here after paying.
+      </p>
     </form>
   );
 }

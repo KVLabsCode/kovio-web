@@ -89,6 +89,13 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify({ amount_cents }),
     }),
+  // Stripe Checkout: returns a hosted URL to redirect the buyer to. The balance
+  // is credited by the webhook after Stripe confirms payment, not here.
+  checkout: (amount_cents: number) =>
+    call<{ url: string }>('/advertiser/v1/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ amount_cents }),
+    }),
   // OEM
   oemMe: () => call<OemMeResponse>('/oem/v1/me'),
   oemOnboard: (body: { org_name: string; org_slug: string }) =>
