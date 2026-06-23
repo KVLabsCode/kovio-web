@@ -12,10 +12,16 @@ export default async function Sidebar() {
   const me = await api.me();
 
   if (me.data) {
-    const dash = await api.dashboard();
+    const [dash, camps] = await Promise.all([api.dashboard(), api.campaigns()]);
+    // Hawkeye is the live view of a running campaign. Once at least one campaign
+    // exists, link it to the most recent one (the list is created_at DESC).
+    const latest = camps.data?.campaigns?.[0];
     const items: RailItem[] = [
       { label: 'Overview', href: '/dashboard', icon: 'overview' },
       { label: 'Campaigns', href: '/campaigns', icon: 'campaigns', count: dash.data?.total_campaigns },
+      ...(latest
+        ? [{ label: 'Hawkeye', href: `/campaigns/${latest.id}`, icon: 'hawkeye' as const, live: true }]
+        : []),
       { label: 'Reports', href: '/reports', icon: 'reports' },
     ];
     return (

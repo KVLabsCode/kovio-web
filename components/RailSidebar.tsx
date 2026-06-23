@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type RailIcon = 'overview' | 'campaigns' | 'fleets' | 'reports';
-export type RailItem = { label: string; href: string; count?: number; icon: RailIcon };
+export type RailIcon = 'overview' | 'campaigns' | 'fleets' | 'reports' | 'hawkeye';
+export type RailItem = { label: string; href: string; count?: number; icon: RailIcon; live?: boolean };
 
 function Icon({ name }: { name: RailIcon }) {
   const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none' as const };
@@ -16,6 +16,14 @@ function Icon({ name }: { name: RailIcon }) {
         <rect x="14" y="3" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
         <rect x="3" y="14" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
         <rect x="14" y="14" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+  if (name === 'hawkeye') {
+    return (
+      <svg {...common} aria-hidden="true">
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -147,7 +155,13 @@ export default function RailSidebar({
                 </span>
                 {open && <span>{it.label}</span>}
               </span>
-              {open && typeof it.count === 'number' && (
+              {open && it.live && (
+                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-good">
+                  <span className="k-pulse h-1.5 w-1.5 rounded-full bg-good" />
+                  Live
+                </span>
+              )}
+              {open && !it.live && typeof it.count === 'number' && (
                 <span className="text-[15px] text-faint">{it.count}</span>
               )}
             </Link>
