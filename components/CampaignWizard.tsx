@@ -100,6 +100,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   const [quality, setQuality] = useState<{ verdict: 'good' | 'needs_work'; note: string } | null>(null);
   const [qualityLoading, setQualityLoading] = useState(false);
   const [qrPreview, setQrPreview] = useState('');
+  const [resuming, setResuming] = useState(false);
 
   // Render the QR for the current link locally so toggling/preview is instant
   // (the served creative at /creative/[code] regenerates it server-side).
@@ -112,6 +113,64 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
       .then(setQrPreview)
       .catch(() => setQrPreview(''));
   }, [draft.code]);
+
+  // Returning from Stripe Checkout (in-flow campaign payment): restore the draft
+  // saved before the redirect, then finalize.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resume = params.get('resume');
+    if (!resume) return;
+    let saved: { draft?: Draft; mode?: Mode } = {};
+    try {
+      saved = JSON.parse(localStorage.getItem('kovio_wizard_resume') || '{}');
+    } catch {
+      saved = {};
+    }
+    if (saved.draft) setDraft(saved.draft);
+    if (saved.mode) setMode(saved.mode);
+    window.history.replaceState({}, '', '/campaigns/new');
+    if (resume === 'cancel') {
+      localStorage.removeItem('kovio_wizard_resume');
+      const keys =
+        (saved.mode ?? 'paid') === 'trial'
+          ? ['brand', 'setup', 'creative', 'review']
+          : ['brand', 'details', 'creative', 'review', 'payment'];
+      setStep(keys.length); // back to the payment step
+      setError('Payment canceled — you can try again.');
+      return;
+    }
+    setResuming(true);
+  }, []);
+
+  // Finalize a paid campaign after payment: retry create until the webhook has
+  // credited the balance (deposit-to-balance keeps funds safe across the redirect).
+  useEffect(() => {
+    if (!resuming) return;
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < 14 && !cancelled; i++) {
+        const r = await doLaunch();
+        if (r === 'ok') {
+          localStorage.removeItem('kovio_wizard_resume');
+          return;
+        }
+        if (r === 'fail') {
+          localStorage.removeItem('kovio_wizard_resume');
+          setResuming(false);
+          return;
+        }
+        await new Promise((res) => setTimeout(res, 1800)); // 'retry': await the deposit webhook
+      }
+      if (!cancelled) {
+        setResuming(false);
+        setError('Payment received and your balance is funded — click Launch to finish.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resuming]);
 
   async function checkQuality(url: string) {
     if (!url || !/^https?:\/\//i.test(url) || isVideoUrl(url)) {
@@ -176,10 +235,10 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
 
   const stepKeys = mode === 'trial'
     ? ['brand', 'setup', 'creative', 'review']
-    : ['brand', 'details', 'creative', 'payment', 'review'];
+    : ['brand', 'details', 'creative', 'review', 'payment'];
   const stepLabels = mode === 'trial'
     ? ['Brand', 'Setup', 'Creative', 'Review']
-    : ['Brand', 'Details', 'Creative', 'Payment', 'Review'];
+    : ['Brand', 'Details', 'Creative', 'Review', 'Payment'];
   const stepKey = stepKeys[step - 1];
   const isFinal = step === stepKeys.length;
 
@@ -225,7 +284,15 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
       setEnrichErr('Enter your website to continue.');
       return;
     }
-    if (isFinal) { launch(); return; }
+    if (stepKey === 'creative' && !draft.creative.trim()) {
+      setError('Add a creative — upload an image/MP4 or paste an image URL.');
+      return;
+    }
+    if (isFinal) {
+      if (stepKey === 'payment') startPayment();
+      else launch();
+      return;
+    }
     const nextKey = stepKeys[step]; // step is 1-based; stepKeys[step] is the next key
     if (nextKey === 'creative' && !draft.code) {
       setError('');
@@ -256,9 +323,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     });
   }
 
-  async function launch() {
-    setLoading(true);
-    setError('');
+  async function doLaunch(): Promise<'ok' | 'retry' | 'fail'> {
     const origin = window.location.origin;
     if (draft.code) await updateLinkImage(draft.code, draft.creative || null, draft.showQr);
     const body = buildCampaignBody({
@@ -271,13 +336,55 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     });
     const { data, error } = await apiClient.createCampaign(body);
     if (error) {
-      setLoading(false);
+      // Paid campaign: the deposit webhook may not have credited yet — caller retries.
+      if (error.code === 'insufficient_balance') return 'retry';
       setError(error.detail ?? 'Could not launch the campaign. Please try again.');
-      return;
+      return 'fail';
     }
     if (data?.id && draft.code) await attachCampaign(draft.code, data.id);
     router.push(data?.id ? `/campaigns/${data.id}` : '/dashboard');
     router.refresh();
+    return 'ok';
+  }
+
+  // Trial (free) launch from the Review step. Paid launches go through Stripe
+  // first (startPayment → resume → doLaunch).
+  async function launch() {
+    setLoading(true);
+    setError('');
+    const r = await doLaunch();
+    if (r !== 'ok') setLoading(false);
+  }
+
+  // Paid: charge the campaign budget via Stripe Checkout in-flow, then return to
+  // the wizard to finalize. Deposit-to-balance means the funds are safe even if
+  // the round-trip is interrupted.
+  async function startPayment() {
+    setLoading(true);
+    setError('');
+    if (draft.code) await updateLinkImage(draft.code, draft.creative || null, draft.showQr);
+    try {
+      localStorage.setItem('kovio_wizard_resume', JSON.stringify({ draft, mode }));
+    } catch {
+      /* private mode / quota — resume just won't auto-restore */
+    }
+    const { data, error } = await apiClient.checkout(budgetCents, {
+      success_path: '/campaigns/new?resume=1',
+      cancel_path: '/campaigns/new?resume=cancel',
+    });
+    if (error) {
+      setLoading(false);
+      if (error.code === 'stripe_unconfigured') setError('Payments aren’t enabled yet. Please try again shortly.');
+      else if (error.code === 'invalid_amount') setError('Choose a budget greater than $0.');
+      else setError(error.detail ?? 'Could not start checkout. Please try again.');
+      return;
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
+    }
+    setLoading(false);
+    setError('Could not start checkout. Please try again.');
   }
 
   // ---- shared class fragments ----
@@ -290,6 +397,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     }`;
 
   const budgetDollars = `$${Number(draft.budget || 0).toLocaleString()}`;
+  const budgetCents = Math.max(0, Math.round(Number(draft.budget || 0) * 100));
 
   // ---- creative preview block ----
   const isImage = /^https?:\/\//i.test(draft.creative) && !/\.html?($|\?)/i.test(draft.creative);
@@ -422,8 +530,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
   // ---- footer ----
   function Footer() {
     let rightLabel = 'Continue →';
-    if (isFinal) rightLabel = mode === 'trial' ? 'Launch campaign' : 'Pay & launch';
-    else if (mode === 'paid' && stepKey === 'payment') rightLabel = 'Review →';
+    if (isFinal) rightLabel = mode === 'trial' ? 'Launch campaign' : `Pay ${budgetDollars} →`;
     return (
       <>
         <div className="mt-2 flex items-center justify-between">
@@ -436,7 +543,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
             disabled={loading}
             className="rounded-[11px] bg-accent px-[30px] py-4 text-[17px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
-            {loading && isFinal ? 'Launching…' : rightLabel}
+            {loading && isFinal ? (mode === 'trial' ? 'Launching…' : 'Redirecting…') : rightLabel}
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
@@ -466,6 +573,24 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
       })}
     </div>
   );
+
+  if (resuming) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 py-14">
+        <div className="w-full max-w-[460px] rounded-[18px] border border-line bg-panel px-9 py-[44px] text-center">
+          <div className="font-mono text-[13px] uppercase tracking-[0.16em] text-faint">Payment received</div>
+          <h1 className="mt-4 font-serif text-[34px] font-medium tracking-[-0.01em] text-ink">
+            Launching your campaign…
+          </h1>
+          <p className="mt-3 text-[15px] text-muted">
+            Confirming your payment with Stripe and starting your campaign — this takes a few
+            seconds.
+          </p>
+          <div className="mx-auto mt-6 h-6 w-6 animate-spin rounded-full border-2 border-line-strong border-t-accent" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-14">
@@ -754,25 +879,17 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
           {stepKey === 'payment' && (
             <>
               <div className="mb-[22px] font-mono text-[13px] uppercase tracking-[0.14em] text-faint">Payment</div>
-              <div className="mb-[22px] flex items-center justify-between rounded-[13px] border border-line bg-panel-2 px-[22px] py-[18px]">
-                <span className="text-[16px] text-muted">Campaign budget</span>
+              <div className="mb-[18px] flex items-center justify-between rounded-[13px] border border-line bg-panel-2 px-[22px] py-[18px]">
+                <span className="text-[16px] text-muted">Amount due now</span>
                 <span className="font-serif text-[30px] text-ink">{budgetDollars}</span>
               </div>
               <p className="mb-[18px] text-[15px] text-muted">
-                Paid campaigns are funded from your Kovio balance and billed only as your ad
-                actually plays. Add funds securely via Stripe in a new tab, then come back and
-                launch — nothing extra is charged on this step.
+                Tap <span className="text-ink">Pay {budgetDollars}</span> to pay your campaign
+                budget securely via Stripe — your campaign launches automatically right after.
+                You’re billed only as your ad actually plays; unspent budget stays on your balance.
               </p>
-              <a
-                href="/deposit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mb-4 inline-flex items-center gap-2 rounded-[11px] bg-accent px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent-dark"
-              >
-                Add funds with Stripe →
-              </a>
               <div className="mb-7 font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
-                Secure checkout · Stripe
+                Secure checkout · Stripe · test mode
               </div>
               <Footer />
             </>
@@ -813,10 +930,8 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
                 </div>
               ) : (
                 <div className="flex justify-between rounded-[12px] border border-line bg-panel-2 px-5 py-4">
-                  <span className="text-[16px] text-muted">
-                    {budgetDollars} · card {draft.card.replace(/\s/g, '').slice(-4) || '----'}
-                  </span>
-                  <span className="text-[16px] font-semibold text-good">Ready to charge</span>
+                  <span className="text-[16px] text-muted">{budgetDollars} budget · paid via Stripe next</span>
+                  <span className="text-[16px] font-semibold text-good">Continue to pay</span>
                 </div>
               )}
               <div className="mt-7">
