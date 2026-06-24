@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { CATEGORIES, categoryLabel } from '@/lib/categories';
 import { buildCampaignBody, brandStepReady } from '@/lib/campaign-draft';
 import { createLink, attachCampaign, updateLinkImage } from '@/lib/links';
+import { FLEET_GO_LIVE } from '@/lib/fleet-clips';
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const IMAGE_MAX_BYTES = 8 * 1024 * 1024; // 8 MB
@@ -54,6 +55,13 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
+// Default a new campaign's start to the fleet go-live date, so the default/trial
+// setup is scheduled for when robots actually begin running ads. Never defaults
+// to a past date once the go-live day has passed.
+function defaultStartISO(): string {
+  const today = todayISO();
+  return FLEET_GO_LIVE > today ? FLEET_GO_LIVE : today;
+}
 function fmt(iso: string, withYear = false): string {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('en-US', {
@@ -75,7 +83,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
     code: '',
     category: 'food',
     budget: '500',
-    start: todayISO(),
+    start: defaultStartISO(),
     duration: 7,
     when: 'all',
     days: 'every',

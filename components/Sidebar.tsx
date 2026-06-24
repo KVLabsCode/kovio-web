@@ -12,18 +12,12 @@ export default async function Sidebar() {
   const me = await api.me();
 
   if (me.data) {
-    const [dash, camps] = await Promise.all([api.dashboard(), api.campaigns()]);
-    // Hawkeye is the live view; it opens once a campaign exists and pulses LIVE
-    // while any campaign is active. The /hawkeye page has its own campaign picker.
-    const list = camps.data?.campaigns ?? [];
-    const hasCampaign = list.length > 0;
-    const hasLive = list.some((c) => c.status === 'active');
+    const dash = await api.dashboard();
+    // Hawkeye lives inside each campaign (/campaigns/[id]) now — no standalone
+    // nav tab. See the campaign detail page for the live view.
     const items: RailItem[] = [
       { label: 'Overview', href: '/dashboard', icon: 'overview' },
       { label: 'Campaigns', href: '/campaigns', icon: 'campaigns', count: dash.data?.total_campaigns },
-      ...(hasCampaign
-        ? [{ label: 'Hawkeye', href: '/hawkeye', icon: 'hawkeye' as const, live: hasLive }]
-        : []),
       { label: 'Insights', href: '/insights', icon: 'reports' },
       { label: 'Billing', href: '/billing', icon: 'billing' },
     ];

@@ -25,11 +25,17 @@ export default function RangePills({
   }
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-[11px] border border-line bg-panel p-1">
+    <div
+      role="group"
+      aria-label="Date range"
+      className="inline-flex items-center gap-1 rounded-[11px] border border-line bg-panel p-1"
+    >
       {pills.map((p) => (
         <button
           key={p}
           onClick={() => select(p)}
+          aria-pressed={p === active}
+          aria-label={`Show ${p} range`}
           className={`rounded-[8px] px-[14px] py-[7px] font-mono text-[12px] tracking-[0.04em] transition-colors duration-150 ${
             p === active ? 'bg-accent text-white' : 'text-muted hover:text-ink'
           }`}
