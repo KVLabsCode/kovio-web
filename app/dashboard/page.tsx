@@ -5,7 +5,6 @@ import { formatCount, formatMoney, formatPct, attentionRate } from '@/lib/format
 import type { Campaign, RecentImpression } from '@/lib/types';
 import AppShell from '@/components/AppShell';
 import RangePills from '@/components/RangePills';
-import HawkeyeTile from '@/components/HawkeyeTile';
 import LiveActivityHero from '@/components/LiveActivityHero';
 import FleetCountdown from '@/components/FleetCountdown';
 import { FLEET_GO_LIVE, goLiveDateLabel } from '@/lib/fleet-clips';
@@ -403,32 +402,20 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Hawkeye + audience */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.62fr_1fr]">
-        <HawkeyeTile
-          unit="unit-A14"
-          location="Live fleet · citywide"
-          passed={walked}
-          looked={attended}
-          engaged={0}
-          fps={30}
-        />
-        <div className="rounded-[18px] border border-line bg-panel p-6">
+      {/* Audience */}
+      <div className="mt-4 rounded-[18px] border border-line bg-panel p-6">
+        <div className="flex items-baseline justify-between">
           <div className="font-serif text-[20px] text-ink">Audience</div>
-          <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-faint">
+          <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-faint">
             LiDAR telemetry · 30d
           </div>
-          <div className="mt-5 flex flex-col gap-[18px]">
-            <AudienceStat label="Avg reach in view" value={d.audience_30d.samples > 0 ? formatCount(Math.round(d.audience_30d.avg_reach)) : '—'} />
-            <AudienceStat label="Peak reach" value={d.audience_30d.samples > 0 ? formatCount(d.audience_30d.peak_reach) : '—'} />
-            <AudienceStat label="Audience samples" value={formatCount(d.audience_30d.samples)} />
-          </div>
-          <div className="mt-6 border-t border-dashed border-line pt-[18px]">
-            <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-faint">Avg dwell on look</div>
-            <div className="mt-1.5 font-serif text-[32px] text-ink">{dwell > 0 ? `${dwell}s` : '—'}</div>
-            <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-faint">Nearest approach</div>
-            <div className="mt-1 text-[18px] text-ink">{nearest != null ? `${nearest}m` : '—'}</div>
-          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
+          <AudienceMetric label="Avg reach in view" value={d.audience_30d.samples > 0 ? formatCount(Math.round(d.audience_30d.avg_reach)) : '—'} />
+          <AudienceMetric label="Peak reach" value={d.audience_30d.samples > 0 ? formatCount(d.audience_30d.peak_reach) : '—'} />
+          <AudienceMetric label="Audience samples" value={formatCount(d.audience_30d.samples)} />
+          <AudienceMetric label="Avg dwell on look" value={dwell > 0 ? `${dwell}s` : '—'} />
+          <AudienceMetric label="Nearest approach" value={nearest != null ? `${nearest}m` : '—'} />
         </div>
       </div>
 
@@ -480,11 +467,11 @@ export default async function DashboardPage({
   );
 }
 
-function AudienceStat({ label, value }: { label: string; value: string }) {
+function AudienceMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-[14px] text-muted">{label}</span>
-      <span className="font-mono text-[15px] text-ink">{value}</span>
+    <div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-faint">{label}</div>
+      <div className="mt-1.5 font-serif text-[28px] text-ink">{value}</div>
     </div>
   );
 }
