@@ -3,6 +3,7 @@
 // Bearer token to the kovio-api FastAPI service. Never throws — returns
 // { data, error }.
 
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type {
   Campaign,
@@ -50,15 +51,19 @@ async function call<T>(path: string, init?: RequestInit): Promise<Result<T>> {
   }
 }
 
+// Each read is wrapped in React.cache() so repeated calls within a single server
+// render (e.g. the Sidebar and the page both reading /me + /dashboard) collapse to
+// ONE network round-trip. `no-store` keeps the data fresh across requests; cache()
+// only dedupes within a request — the two are complementary.
 export const api = {
-  me: () => call<MeResponse>('/advertiser/v1/me'),
-  dashboard: () => call<Dashboard>('/advertiser/v1/dashboard'),
-  campaigns: () => call<{ campaigns: Campaign[] }>('/advertiser/v1/campaigns'),
-  campaign: (id: string) => call<CampaignDetail>(`/advertiser/v1/campaigns/${id}`),
+  me: cache(() => call<MeResponse>('/advertiser/v1/me')),
+  dashboard: cache(() => call<Dashboard>('/advertiser/v1/dashboard')),
+  campaigns: cache(() => call<{ campaigns: Campaign[] }>('/advertiser/v1/campaigns')),
+  campaign: cache((id: string) => call<CampaignDetail>(`/advertiser/v1/campaigns/${id}`)),
   // OEM (server reads)
-  oemMe: () => call<OemMeResponse>('/oem/v1/me'),
-  oemDashboard: (range?: string) =>
-    call<OemDashboard>(`/oem/v1/dashboard${range ? `?range=${range}` : ''}`),
-  oemFleets: () => call<{ fleets: Fleet[] }>('/oem/v1/fleets'),
-  oemFleet: (id: string) => call<FleetDetail>(`/oem/v1/fleets/${id}`),
+  oemMe: cache(() => call<OemMeResponse>('/oem/v1/me')),
+  oemDashboard: cache((range?: string) =>
+    call<OemDashboard>(`/oem/v1/dashboard${range ? `?range=${range}` : ''}`)),
+  oemFleets: cache(() => call<{ fleets: Fleet[] }>('/oem/v1/fleets')),
+  oemFleet: cache((id: string) => call<FleetDetail>(`/oem/v1/fleets/${id}`)),
 };

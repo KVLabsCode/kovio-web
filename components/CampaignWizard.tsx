@@ -1016,7 +1016,7 @@ export default function CampaignWizard({ trialAvailable }: { trialAvailable: boo
                     : 'Your balance covers this campaign. No payment needed; tap Launch to start. You’re billed only as your ad actually plays.'}
               </p>
               <div className="mb-7 font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
-                Secure checkout · Stripe · test mode
+                Secure checkout · Stripe
               </div>
               <Footer />
             </>
