@@ -7,6 +7,8 @@ import AppShell from '@/components/AppShell';
 import RangePills from '@/components/RangePills';
 import HawkeyeTile from '@/components/HawkeyeTile';
 import LiveActivityHero from '@/components/LiveActivityHero';
+import FleetCountdown from '@/components/FleetCountdown';
+import { FLEET_GO_LIVE, goLiveDateLabel } from '@/lib/fleet-clips';
 
 const RANGES = ['24H', '7D', '30D', 'ALL'];
 
@@ -351,16 +353,31 @@ export default async function DashboardPage({
         <div className="flex flex-col rounded-[18px] border border-line bg-panel p-6">
           <div className="flex items-center justify-between">
             <div className="font-serif text-[20px] text-ink">Live activity</div>
-            <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-good">
-              <span className="k-pulse h-1.5 w-1.5 rounded-full bg-good" />Streaming
-            </span>
+            {d.recent_impressions.length === 0 ? (
+              <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-accent-dark">
+                <span className="k-pulse h-1.5 w-1.5 rounded-full bg-accent" />Standby
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-good">
+                <span className="k-pulse h-1.5 w-1.5 rounded-full bg-good" />Streaming
+              </span>
+            )}
           </div>
           <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-faint">
             Verified events · live
           </div>
-          <div className="mt-3.5 flex flex-col">
+          <div className="mt-3.5 flex flex-1 flex-col">
             {d.recent_impressions.length === 0 ? (
-              <div className="py-8 text-center text-[14px] text-faint">No events yet.</div>
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center">
+                <span className="inline-flex items-center gap-2 rounded-full bg-tint px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-accent-dark">
+                  <span className="k-pulse h-1.5 w-1.5 rounded-full bg-accent" />
+                  Going live {goLiveDateLabel(FLEET_GO_LIVE)}
+                </span>
+                <FleetCountdown className="text-[15px] text-ink" />
+                <p className="max-w-[250px] text-[13px] leading-[1.45] text-faint">
+                  Verified events stream here the moment your campaign hits the live fleet.
+                </p>
+              </div>
             ) : (
               d.recent_impressions.slice(0, 6).map((ev, i) => {
                 const t = new Date(ev.timestamp);
