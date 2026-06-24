@@ -6,6 +6,7 @@ import type { Campaign, RecentImpression } from '@/lib/types';
 import AppShell from '@/components/AppShell';
 import RangePills from '@/components/RangePills';
 import HawkeyeTile from '@/components/HawkeyeTile';
+import LiveActivityHero from '@/components/LiveActivityHero';
 
 const RANGES = ['24H', '7D', '30D', 'ALL'];
 
@@ -182,7 +183,8 @@ export default async function DashboardPage({
   if (campaigns.length === 0) {
     return (
       <AppShell page="Overview" action={newCampaignBtn}>
-        <div className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
+        <LiveActivityHero />
+        <div className="mt-7 font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
           {dateLabel(now)}
         </div>
         <h1 className="mt-2 font-serif text-[44px] font-medium leading-[1.05] tracking-[-0.02em] text-ink">
@@ -194,21 +196,21 @@ export default async function DashboardPage({
           on a live citywide robot fleet. No card needed, let&apos;s get it running.
         </p>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:mt-7 lg:grid-cols-[1.7fr_1fr]">
           {/* Getting started */}
-          <section className="rounded-[18px] border border-line bg-panel px-8 py-7">
-            <div className="mb-6 font-mono text-[12px] uppercase tracking-[0.14em] text-faint">
+          <section className="rounded-[18px] border border-line bg-panel px-5 py-5 sm:px-8 sm:py-6">
+            <div className="mb-5 font-mono text-[12px] uppercase tracking-[0.14em] text-faint">
               Getting started
             </div>
             {GETTING_STARTED.map((step, i) => (
-              <div key={step.n} className={`flex gap-[18px] ${i < GETTING_STARTED.length - 1 ? 'mb-6' : ''}`}>
+              <div key={step.n} className={`flex gap-[18px] ${i < GETTING_STARTED.length - 1 ? 'mb-5' : ''}`}>
                 <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-tint font-mono text-[14px] text-accent-dark">
                   {step.n}
                 </div>
                 <div>
-                  <div className="text-[18px] font-semibold text-ink">{step.title}</div>
-                  <div className="mt-0.5 text-[16px] leading-[1.45] text-muted">{step.desc}</div>
-                  <Link href="/campaigns/new" className="mt-1 inline-block text-[16px] text-accent-dark hover:text-accent">
+                  <div className="text-[17px] font-semibold text-ink sm:text-[18px]">{step.title}</div>
+                  <div className="mt-0.5 text-[15px] leading-[1.4] text-muted sm:text-[16px]">{step.desc}</div>
+                  <Link href="/campaigns/new" className="mt-1 inline-block text-[15px] text-accent-dark hover:text-accent sm:text-[16px]">
                     {step.link}
                   </Link>
                 </div>
@@ -217,12 +219,12 @@ export default async function DashboardPage({
           </section>
 
           {/* Plan card */}
-          <section className="flex flex-col rounded-[18px] border border-tint-line bg-tint px-7 py-7">
+          <section className="flex flex-col rounded-[18px] border border-tint-line bg-tint px-5 py-5 sm:px-7 sm:py-6">
             <div className="flex items-start justify-between">
               <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">Your plan</div>
               <span className="rounded-[20px] bg-panel px-2.5 py-1 font-mono text-[11px] text-accent-dark">FREE TRIAL</span>
             </div>
-            <div className="mt-4 font-serif text-[40px] leading-[1.04] text-ink">
+            <div className="mt-4 font-serif text-[32px] leading-[1.04] text-ink sm:text-[40px]">
               Your first campaign, free
             </div>
             <p className="mb-auto mt-3 text-[15px] text-muted">
@@ -230,7 +232,7 @@ export default async function DashboardPage({
             </p>
             <Link
               href="/campaigns/new"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent py-[15px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
             >
               + Launch free campaign
             </Link>
@@ -251,6 +253,33 @@ export default async function DashboardPage({
   const dwell = d.audience_30d.avg_dwell_s;
   const nearest = d.audience_30d.nearest_m;
 
+  // Range caption: what window the dashboard is showing + when the campaign(s)
+  // began, so a brand new to the page knows the data is "since launch", not empty.
+  const RANGE_WINDOW: Record<string, string> = {
+    '24H': 'last 24 hours',
+    '7D': 'last 7 days',
+    '30D': 'last 30 days',
+    ALL: 'all time',
+  };
+  const startTimes = campaigns
+    .map((c) => new Date(c.start_at).getTime())
+    .filter((t) => !Number.isNaN(t));
+  const earliestStart = startTimes.length ? new Date(Math.min(...startTimes)) : null;
+  const fmtDate = (dt: Date) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const daysRunning = earliestStart
+    ? Math.max(0, Math.floor((now.getTime() - earliestStart.getTime()) / 86_400_000))
+    : null;
+  let startMeta: string | null = null;
+  if (earliestStart) {
+    if (earliestStart.getTime() > now.getTime()) {
+      startMeta = `Starts ${fmtDate(earliestStart)}`;
+    } else {
+      const span =
+        daysRunning === 0 ? 'first day of data' : `${daysRunning} day${daysRunning === 1 ? '' : 's'} of data`;
+      startMeta = `Live since ${fmtDate(earliestStart)} · ${span}`;
+    }
+  }
+
   return (
     <AppShell page="Overview" action={newCampaignBtn}>
       {/* header */}
@@ -259,11 +288,17 @@ export default async function DashboardPage({
           <div className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
             {dateLabel(now)}
           </div>
-          <h1 className="mt-2 font-serif text-[44px] font-medium leading-[1.05] tracking-[-0.02em] text-ink">
+          <h1 className="mt-2 font-serif text-[30px] font-medium leading-[1.05] tracking-[-0.02em] text-ink sm:text-[38px] lg:text-[44px]">
             {greeting(now)}, <em className="italic text-accent-dark">{brand}.</em>
           </h1>
         </div>
-        <RangePills pills={RANGES} active={range} />
+        <div className="flex flex-col items-start gap-1.5 sm:items-end">
+          <RangePills pills={RANGES} active={range} />
+          <div className="font-mono text-[11px] text-faint">
+            Showing {RANGE_WINDOW[range] ?? RANGE_WINDOW['30D']}
+            {startMeta && <> · {startMeta}</>}
+          </div>
+        </div>
       </div>
 
       {/* KPI row */}
@@ -386,7 +421,8 @@ export default async function DashboardPage({
           <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-faint">Your campaigns</div>
           <Link href="/campaigns" className="text-[14px] text-accent-dark hover:text-accent">View all →</Link>
         </div>
-        <div className="overflow-hidden rounded-[16px] border border-line bg-panel">
+        <div className="overflow-x-auto rounded-[16px] border border-line bg-panel">
+          <div className="min-w-[680px]">
           <div className="grid grid-cols-[2.4fr_1fr_1fr_1fr_0.9fr] gap-[18px] border-b border-line px-6 py-3.5 font-mono text-[10px] uppercase tracking-[0.1em] text-faint">
             <span>Campaign</span>
             <span>Category</span>
@@ -420,6 +456,7 @@ export default async function DashboardPage({
               </Link>
             );
           })}
+          </div>
         </div>
       </div>
     </AppShell>
