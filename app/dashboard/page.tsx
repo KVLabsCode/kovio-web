@@ -187,7 +187,7 @@ export default async function DashboardPage({
         <div className="mt-7 font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
           {dateLabel(now)}
         </div>
-        <h1 className="mt-2 font-serif text-[44px] font-medium leading-[1.05] tracking-[-0.02em] text-ink">
+        <h1 className="mt-2 font-serif text-[30px] font-medium leading-[1.05] tracking-[-0.02em] text-ink sm:text-[38px] lg:text-[44px]">
           {greeting(now)}, <em className="italic text-accent-dark">{brand}.</em>
         </h1>
         <p className="mt-3 max-w-[640px] text-[18px] leading-[1.5] text-muted">

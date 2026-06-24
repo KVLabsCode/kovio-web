@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import { KovioMark } from './KovioMark';
-import TopbarSearch from './TopbarSearch';
+import MobileMenuButton from './MobileMenuButton';
+// Search disabled for now — re-enable by restoring the import + <TopbarSearch /> below.
+// import TopbarSearch from './TopbarSearch';
 
 // Shared signed-in shell: collapsible rail + a sticky top bar (KOVIO / {page}
 // breadcrumb, optional right-side action) + a 1320px content column.
@@ -17,25 +19,29 @@ export default function AppShell({
 }) {
   return (
     <div className="flex min-h-screen bg-bg">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Sidebar />
-      <main className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-30 flex items-center justify-between gap-5 border-b border-line bg-bg/85 px-9 py-[18px] backdrop-blur-md backdrop-saturate-150 print:hidden">
-          <div className="flex items-center gap-2.5 font-mono text-[13px] text-muted">
-            <KovioMark className="h-[18px] w-[18px] text-accent" />
+      <main id="main-content" className="flex min-w-0 flex-1 flex-col">
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-bg/85 px-4 py-3 backdrop-blur-md backdrop-saturate-150 sm:px-6 sm:py-[18px] lg:px-9 print:hidden">
+          <div className="flex min-w-0 items-center gap-2.5 font-mono text-[13px] text-muted">
+            <MobileMenuButton />
+            <KovioMark className="h-[18px] w-[18px] shrink-0 text-accent" />
             <span className="tracking-[0.06em]">KOVIO</span>
             {page && (
               <>
                 <span className="text-line-strong">/</span>
-                <span className="text-ink">{page}</span>
+                <span className="truncate text-ink">{page}</span>
               </>
             )}
           </div>
-          <div className="flex items-center gap-3.5">
-            <TopbarSearch />
+          <div className="flex shrink-0 items-center gap-3.5">
+            {/* <TopbarSearch /> */}
             {action}
           </div>
         </div>
-        <div className="w-full max-w-[1320px] px-9 pb-14 pt-8">{children}</div>
+        <div className="w-full max-w-[1320px] px-4 pb-10 pt-6 sm:px-6 lg:px-9 lg:pb-14 lg:pt-8">{children}</div>
       </main>
     </div>
   );
