@@ -40,9 +40,11 @@ function toEditItems(d?: CustomDisplay): EditItem[] {
 export default function DisplayEditor({
   mode,
   initial,
+  fleets = [],
 }: {
   mode: 'create' | 'edit';
   initial?: CustomDisplay;
+  fleets?: { id: string; name: string }[];
 }) {
   const router = useRouter();
 
@@ -51,6 +53,7 @@ export default function DisplayEditor({
   const [defaultSecs, setDefaultSecs] = useState(initial?.default_image_seconds ?? 8);
   const [items, setItems] = useState<EditItem[]>(() => toEditItems(initial));
   const [status, setStatus] = useState(initial?.status ?? 'active');
+  const [fleetId, setFleetId] = useState<string>(initial?.fleet_id ?? '');
 
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
@@ -151,6 +154,7 @@ export default function DisplayEditor({
         const { data, error } = await apiClient.oemCreateDisplay({
           name: name.trim(),
           advertiser_name: advertiser.trim() || null,
+          fleet_id: fleetId || null,
           default_image_seconds: defaultSecs,
           items: payloadItems,
         });
@@ -158,7 +162,7 @@ export default function DisplayEditor({
           setSaveErr(error?.detail ?? 'Could not create the display.');
           return;
         }
-        router.push(`/oem/displays/${data.id}`);
+        router.push(`/oem/campaigns/${data.id}`);
         router.refresh();
         return;
       }
@@ -167,6 +171,7 @@ export default function DisplayEditor({
       const upd = await apiClient.oemUpdateDisplay(id, {
         name: name.trim(),
         advertiser_name: advertiser.trim() || null,
+        fleet_id: fleetId || null,
         default_image_seconds: defaultSecs,
       });
       if (upd.error) {
@@ -199,10 +204,10 @@ export default function DisplayEditor({
 
   async function destroy() {
     if (mode !== 'edit') return;
-    if (!confirm('Delete this display? The link will stop working immediately.')) return;
+    if (!confirm('Delete this campaign? The link will stop working immediately.')) return;
     const { error } = await apiClient.oemDeleteDisplay(initial!.id);
     if (!error) {
-      router.push('/oem/displays');
+      router.push('/oem/campaigns');
       router.refresh();
     }
   }
@@ -211,14 +216,15 @@ export default function DisplayEditor({
     <div className="max-w-3xl">
       <div className="mb-7">
         <div className="font-mono text-xs uppercase tracking-wide text-ink-2">
-          {mode === 'create' ? 'New display' : 'Edit display'}
+          {mode === 'create' ? 'New campaign' : 'Edit campaign'}
         </div>
         <h1 className="mt-1 font-serif text-h2 text-ink">
-          {mode === 'create' ? 'Custom display.' : name || 'Custom display.'}
+          {mode === 'create' ? 'Custom campaign.' : name || 'Custom campaign.'}
         </h1>
         <p className="mt-2 text-sm text-ink-2">
-          Upload one or more creatives, then point a robot screen at the link. Multiple items loop;
-          images use their own duration (or the default), videos play to the end.
+          Upload one or more creatives, link a fleet if you want its robots to serve it, and point any
+          robot screen at the link. Multiple items loop; images use their own duration (or the
+          default), videos play to the end.
         </p>
       </div>
 
@@ -293,6 +299,24 @@ export default function DisplayEditor({
             onChange={(e) => setDefaultSecs(Math.max(1, Math.min(600, Number(e.target.value) || 1)))}
             className={inputCls}
           />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={labelCls} htmlFor="d-fleet">Fleet</label>
+          <select
+            id="d-fleet"
+            value={fleetId}
+            onChange={(e) => setFleetId(e.target.value)}
+            className={inputCls}
+          >
+            <option value="">No fleet — screen link only</option>
+            {fleets.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-ink-2">
+            Link this campaign to a fleet to associate it with those robots. Leave unlinked to use
+            the screen link on its own.
+          </p>
         </div>
       </div>
 
@@ -372,17 +396,17 @@ export default function DisplayEditor({
       {savedTick > 0 && !saveErr && <p className="mt-5 text-sm text-rust">Saved.</p>}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button type="button" onClick={save} disabled={saving || uploading} className={btnRust}>
-          {saving ? 'Saving…' : mode === 'create' ? 'Create display' : 'Save changes'}
+          {saving ? 'Saving…' : mode === 'create' ? 'Create campaign' : 'Save changes'}
         </button>
         {mode === 'edit' && (
           <button type="button" onClick={toggleStatus} className={btnGhost}>
             {status === 'active' ? 'Pause' : 'Activate'}
           </button>
         )}
-        <a href="/oem/displays" className={btnGhost}>Cancel</a>
+        <a href="/oem/campaigns" className={btnGhost}>Cancel</a>
         {mode === 'edit' && (
           <button type="button" onClick={destroy} className="ml-auto text-sm text-danger hover:underline">
-            Delete display
+            Delete campaign
           </button>
         )}
       </div>
