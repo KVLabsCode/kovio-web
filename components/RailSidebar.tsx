@@ -4,7 +4,14 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type RailIcon = 'overview' | 'campaigns' | 'fleets' | 'reports' | 'hawkeye' | 'billing';
+export type RailIcon =
+  | 'overview'
+  | 'campaigns'
+  | 'fleets'
+  | 'reports'
+  | 'hawkeye'
+  | 'billing'
+  | 'displays';
 export type RailItem = { label: string; href: string; count?: number; icon: RailIcon; live?: boolean };
 
 // The mobile menu button (in AppShell's top bar) dispatches this event; the
@@ -58,6 +65,16 @@ function Icon({ name }: { name: RailIcon }) {
       <svg {...common} aria-hidden="true">
         <path d="M5 19V5a1 1 0 0 1 1-1h9l4 4v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
         <path d="M9 13h6M9 16h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (name === 'displays') {
+    // a screen with a play glyph — a looping display
+    return (
+      <svg {...common} aria-hidden="true">
+        <rect x="3" y="4" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M9 21h6M12 17v4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M10.8 8.4l3.4 2.1-3.4 2.1V8.4Z" fill="currentColor" />
       </svg>
     );
   }

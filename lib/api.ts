@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import type {
   Campaign,
   CampaignDetail,
+  CustomDisplay,
   Dashboard,
   Fleet,
   FleetDetail,
@@ -66,4 +67,6 @@ export const api = {
     call<OemDashboard>(`/oem/v1/dashboard${range ? `?range=${range}` : ''}`)),
   oemFleets: cache(() => call<{ fleets: Fleet[] }>('/oem/v1/fleets')),
   oemFleet: cache((id: string) => call<FleetDetail>(`/oem/v1/fleets/${id}`)),
+  oemDisplays: cache(() => call<{ displays: CustomDisplay[] }>('/oem/v1/displays')),
+  oemDisplay: cache((id: string) => call<CustomDisplay>(`/oem/v1/displays/${id}`)),
 };

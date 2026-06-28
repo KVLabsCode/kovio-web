@@ -226,3 +226,31 @@ export interface FleetDetail {
     audience_30d: AudienceSummary;
   };
 }
+
+// --- OEM custom displays ------------------------------------------------------
+// A standalone, looping screen the OEM points a robot at (/display/<code>).
+export type DisplayStatus = 'active' | 'paused';
+
+export interface CustomDisplayItem {
+  id?: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  // Seconds an image is shown; null => use the display default. Videos ignore it.
+  duration_seconds: number | null;
+  position?: number;
+}
+
+export interface CustomDisplay {
+  id: string;
+  code: string;
+  public_path: string; // e.g. "/display/abc123"
+  name: string;
+  advertiser_name: string | null;
+  fleet_id: string | null;
+  status: DisplayStatus;
+  default_image_seconds: number;
+  item_count?: number;
+  items?: CustomDisplayItem[];
+  created_at: string;
+  updated_at: string;
+}

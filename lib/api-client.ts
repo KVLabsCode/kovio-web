@@ -7,12 +7,27 @@
 import { createClient } from '@/lib/supabase/client';
 import type {
   Campaign,
+  CustomDisplay,
+  CustomDisplayItem,
   Fleet,
   MeResponse,
   MintedApiKey,
   OemMeResponse,
   Result,
 } from '@/lib/types';
+
+// What the client sends for one playlist item (the server fills id/position).
+export type DisplayItemInput = Pick<CustomDisplayItem, 'media_url' | 'media_type'> & {
+  duration_seconds?: number | null;
+};
+
+export interface CreateDisplayBody {
+  name: string;
+  advertiser_name?: string | null;
+  fleet_id?: string | null;
+  default_image_seconds?: number;
+  items: DisplayItemInput[];
+}
 
 const API = process.env.NEXT_PUBLIC_KOVIO_API_URL!;
 
@@ -118,4 +133,24 @@ export const apiClient = {
     }),
   oemRevokeApiKey: (fleetId: string, keyId: string) =>
     call<null>(`/oem/v1/fleets/${fleetId}/api-keys/${keyId}`, { method: 'DELETE' }),
+  // OEM custom displays
+  oemCreateDisplay: (body: CreateDisplayBody) =>
+    call<CustomDisplay>('/oem/v1/displays', { method: 'POST', body: JSON.stringify(body) }),
+  oemUpdateDisplay: (
+    id: string,
+    body: Partial<{
+      name: string;
+      advertiser_name: string | null;
+      default_image_seconds: number;
+      status: 'active' | 'paused';
+      fleet_id: string | null;
+    }>,
+  ) => call<CustomDisplay>(`/oem/v1/displays/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  oemReplaceDisplayItems: (id: string, items: DisplayItemInput[]) =>
+    call<CustomDisplay>(`/oem/v1/displays/${id}/items`, {
+      method: 'PUT',
+      body: JSON.stringify({ items }),
+    }),
+  oemDeleteDisplay: (id: string) =>
+    call<null>(`/oem/v1/displays/${id}`, { method: 'DELETE' }),
 };

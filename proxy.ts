@@ -3,9 +3,18 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-// `/r/` (tracked QR redirects) and `/creative/` (fleet-rendered ad creatives)
-// are reached by unauthenticated robots and phone scanners — they must stay public.
-const PUBLIC_PATHS = ['/login', '/oem/login', '/auth/callback', '/auth/confirm', '/r/', '/creative/'];
+// `/r/` (tracked QR redirects), `/creative/` (fleet-rendered ad creatives) and
+// `/display/` (OEM custom-display players) are reached by unauthenticated robots
+// and phone scanners — they must stay public.
+const PUBLIC_PATHS = [
+  '/login',
+  '/oem/login',
+  '/auth/callback',
+  '/auth/confirm',
+  '/r/',
+  '/creative/',
+  '/display/',
+];
 
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
