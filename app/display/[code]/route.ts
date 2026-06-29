@@ -61,7 +61,7 @@ export async function GET(
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
   .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-  .art{width:100%;height:100%;object-fit:contain;background:#000}
+  .art{width:100%;height:100%;object-fit:cover;background:#000}
 </style></head>
 <body><div class="stage" id="stage"></div>
 <script>
