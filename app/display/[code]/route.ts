@@ -50,7 +50,13 @@ export async function GET(
   const playlistJson = JSON.stringify(items).replace(/</g, '\\u003c');
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/display/${encodeURIComponent(code)}/manifest">
 <title>Kovio display</title>
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
@@ -93,7 +99,33 @@ export async function GET(
     }
   }
   show();
-  // Pick up playlist edits / pause without re-touching the robot.
+
+  // Keep the screen awake — a kiosk display must never sleep. Re-acquire when
+  // the tab becomes visible again (the lock is dropped on hide).
+  function keepAwake(){
+    try {
+      if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').catch(function(){});
+      }
+    } catch (e) {}
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') keepAwake();
+  });
+
+  // First tap takes the page fullscreen — hides browser chrome even in a plain
+  // browser tab (kiosk apps / installed PWA are already chromeless).
+  function goFullscreen(){
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+    if (req) { try { req.call(el); } catch (e) {} }
+  }
+  document.addEventListener('click', goFullscreen, { once: true });
+  document.addEventListener('touchend', goFullscreen, { once: true });
+
+  // Pick up playlist edits / pause without re-touching the robot. (An installed
+  // PWA / kiosk browser stays fullscreen across this reload; a plain tab won't.)
   setTimeout(function(){ location.reload(); }, 60000);
 })();
 </script>
