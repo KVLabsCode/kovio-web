@@ -1,53 +1,31 @@
-// Robot-/screen-facing player for an OEM "custom display".
+// Robot-/screen-facing player for an OEM "custom campaign".
 //
-// Point a robot screen at /display/<code>. This self-contained HTML page fetches
-// the display's playlist from the cloud public endpoint and loops it full-screen:
-// images advance after their duration (falling back to the display default),
-// videos play to their natural end, then it wraps around. A single item just
-// holds (images) or loops (video). Paused/unknown displays render an idle black
-// screen. It soft-reloads each minute so edits/pauses propagate without touching
-// the robot. No QR, no budget — this is the advertiser-content-only surface.
+// Point a robot screen at /display/<code>. This self-contained HTML page loops
+// the campaign's playlist full-screen (object-fit: cover, no bars): images
+// advance after their duration (or the display default), videos play to their
+// natural end, then it wraps around.
+//
+// It refreshes the playlist IN PLACE every ~20s (fetching the same-origin
+// /display/<code>/data endpoint) instead of reloading the page — so the screen
+// never drops out of fullscreen and the wake-lock holds. A paused/unknown
+// campaign just shows black and resumes on its own when it goes active again.
+// No QR, no budget — advertiser content only.
+
+import { fetchPlaylist } from '@/lib/display';
 
 const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8' };
-
-const API_BASE = (process.env.NEXT_PUBLIC_KOVIO_API_URL ?? '').replace(/\/$/, '');
-
-interface PlaylistItem {
-  media_url: string;
-  media_type: 'image' | 'video';
-  duration_seconds: number | null;
-}
-
-function idleDoc(status: number): Response {
-  const html = `<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body{margin:0;height:100%;background:#000}</style></head><body></body></html>`;
-  return new Response(html, { status, headers: HTML_HEADERS });
-}
 
 export async function GET(
   _request: Request,
   ctx: { params: Promise<{ code: string }> },
 ): Promise<Response> {
   const { code } = await ctx.params;
-  if (!API_BASE) return idleDoc(500);
+  const { items, default_image_seconds } = await fetchPlaylist(code);
 
-  let items: PlaylistItem[] = [];
-  let defaultSecs = 8;
-  try {
-    const res = await fetch(`${API_BASE}/display/v1/${encodeURIComponent(code)}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return idleDoc(res.status === 404 ? 404 : 502);
-    const data = await res.json();
-    items = Array.isArray(data?.items) ? data.items : [];
-    if (typeof data?.default_image_seconds === 'number') defaultSecs = data.default_image_seconds;
-  } catch {
-    return idleDoc(502);
-  }
-
-  // Inline the playlist safely (guard against </script> breakouts in URLs).
+  // Inline the initial playlist safely (guard against </script> breakouts).
   const playlistJson = JSON.stringify(items).replace(/</g, '\\u003c');
+  const dataUrl = `/display/${encodeURIComponent(code)}/data`;
+  const manifestUrl = `/display/${encodeURIComponent(code)}/manifest`;
 
   const html = `<!doctype html>
 <html><head><meta charset="utf-8">
@@ -56,7 +34,7 @@ export async function GET(
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/display/${encodeURIComponent(code)}/manifest">
+<link rel="manifest" href="${manifestUrl}">
 <title>Kovio display</title>
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
@@ -67,14 +45,17 @@ export async function GET(
 <script>
 (function(){
   var PLAYLIST = ${playlistJson};
-  var DEFAULT_SECS = ${defaultSecs};
+  var DEFAULT_SECS = ${default_image_seconds};
+  var DATA_URL = ${JSON.stringify(dataUrl)};
+  var sig = JSON.stringify(PLAYLIST);
   var stage = document.getElementById('stage');
   var idx = 0, timer = null;
+
   function clearTimer(){ if(timer){ clearTimeout(timer); timer = null; } }
   function next(){ if(PLAYLIST.length){ idx = (idx + 1) % PLAYLIST.length; show(); } }
   function show(){
     clearTimer();
-    if(!PLAYLIST.length) return;
+    if(!PLAYLIST.length){ stage.innerHTML = ''; return; }
     var item = PLAYLIST[idx % PLAYLIST.length];
     stage.innerHTML = '';
     if(item.media_type === 'video'){
@@ -104,9 +85,7 @@ export async function GET(
   // the tab becomes visible again (the lock is dropped on hide).
   function keepAwake(){
     try {
-      if ('wakeLock' in navigator) {
-        navigator.wakeLock.request('screen').catch(function(){});
-      }
+      if ('wakeLock' in navigator) { navigator.wakeLock.request('screen').catch(function(){}); }
     } catch (e) {}
   }
   keepAwake();
@@ -124,9 +103,22 @@ export async function GET(
   document.addEventListener('click', goFullscreen, { once: true });
   document.addEventListener('touchend', goFullscreen, { once: true });
 
-  // Pick up playlist edits / pause without re-touching the robot. (An installed
-  // PWA / kiosk browser stays fullscreen across this reload; a plain tab won't.)
-  setTimeout(function(){ location.reload(); }, 60000);
+  // Pick up playlist edits / pause / resume IN PLACE — no page reload, so the
+  // screen stays fullscreen and the wake-lock holds. Only restart playback when
+  // the playlist actually changed (otherwise leave the current item playing).
+  function refresh(){
+    fetch(DATA_URL, { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(!d){ return; }
+        if(typeof d.default_image_seconds === 'number'){ DEFAULT_SECS = d.default_image_seconds; }
+        var items = (d.ok && Array.isArray(d.items)) ? d.items : [];
+        var ns = JSON.stringify(items);
+        if(ns !== sig){ sig = ns; PLAYLIST = items; idx = 0; show(); }
+      })
+      .catch(function(){});
+  }
+  setInterval(refresh, 20000);
 })();
 </script>
 </body></html>`;
