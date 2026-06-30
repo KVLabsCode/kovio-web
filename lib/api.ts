@@ -10,6 +10,7 @@ import type {
   CampaignDetail,
   CustomDisplay,
   Dashboard,
+  DisplayMetrics,
   Fleet,
   FleetDetail,
   MeResponse,
@@ -69,4 +70,6 @@ export const api = {
   oemFleet: cache((id: string) => call<FleetDetail>(`/oem/v1/fleets/${id}`)),
   oemDisplays: cache(() => call<{ displays: CustomDisplay[] }>('/oem/v1/displays')),
   oemDisplay: cache((id: string) => call<CustomDisplay>(`/oem/v1/displays/${id}`)),
+  oemDisplayMetrics: cache((id: string) =>
+    call<DisplayMetrics>(`/oem/v1/displays/${id}/metrics`)),
 };

@@ -6,9 +6,11 @@
 
 import { createClient } from '@/lib/supabase/client';
 import type {
+  ActiveAssignment,
   Campaign,
   CustomDisplay,
   CustomDisplayItem,
+  DisplayLive,
   Fleet,
   MeResponse,
   MintedApiKey,
@@ -153,4 +155,19 @@ export const apiClient = {
     }),
   oemDeleteDisplay: (id: string) =>
     call<null>(`/oem/v1/displays/${id}`, { method: 'DELETE' }),
+  // Bind a custom display to the robots showing it (fleet_id fans out to every
+  // robot in the fleet). This is what makes the robot's perception attribute to
+  // this display — see lib/display-insights on the backend.
+  oemAssignDisplay: (id: string, body: { robot_ids?: string[]; fleet_id?: string }) =>
+    call<{ assigned: number; active: ActiveAssignment[] }>(
+      `/oem/v1/displays/${id}/assign`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  oemUnassignDisplay: (id: string, body: { robot_ids?: string[]; fleet_id?: string }) =>
+    call<{ unassigned: number; active: ActiveAssignment[] }>(
+      `/oem/v1/displays/${id}/unassign`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  oemDisplayLive: (id: string, windowMinutes = 5) =>
+    call<DisplayLive>(`/oem/v1/displays/${id}/live?window_minutes=${windowMinutes}`),
 };

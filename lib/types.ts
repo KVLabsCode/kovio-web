@@ -268,3 +268,32 @@ export interface CustomDisplay {
   created_at: string;
   updated_at: string;
 }
+
+// A robot currently showing this display (open assignment interval).
+export interface ActiveAssignment {
+  robot_id: string;
+  since: string; // ISO timestamp
+}
+
+// One attributed event in the live feed (scene -> "view", interaction -> kind).
+export interface DisplayLiveEvent {
+  kind: string;
+  person_count?: number;
+  attended_count?: number;
+  ts: string; // ISO timestamp
+}
+
+// GET /oem/v1/displays/{id}/metrics — window summary for page load.
+export interface DisplayMetrics {
+  days: number;
+  summary: AudienceSummary;
+  active: ActiveAssignment[];
+}
+
+// GET /oem/v1/displays/{id}/live — recent-window summary + event feed (polled).
+export interface DisplayLive {
+  window_minutes: number;
+  summary: AudienceSummary;
+  events: DisplayLiveEvent[];
+  active: ActiveAssignment[];
+}
