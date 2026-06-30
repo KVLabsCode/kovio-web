@@ -17,6 +17,27 @@ export const formatCount = (n: number): string => {
 
 export const formatPct = (decimal: number): string => `${(decimal * 100).toFixed(1)}%`;
 
+// Dwell seconds. 0 is the "no data" sentinel from the audience summary -> "—".
+export const formatDwell = (seconds: number | null | undefined): string =>
+  seconds != null && seconds > 0 ? `${seconds.toFixed(1)}s` : '—';
+
+// Proximity / approach distance in metres; null/undefined -> "—".
+export const formatDistance = (m: number | null | undefined): string =>
+  m != null ? `${m.toFixed(1)}m` : '—';
+
+// Human label for an interaction kind key (handshake -> "Handshakes", etc.).
+export const interactionLabel = (kind: string): string => {
+  const map: Record<string, string> = {
+    handshake: 'Handshakes',
+    wave: 'Waves',
+    high_five: 'High-fives',
+    fist_bump: 'Fist bumps',
+    phone_out: 'Phones out',
+    gaze_dwell: 'Sustained looks',
+  };
+  return map[kind] ?? kind.replace(/_/g, ' ');
+};
+
 // Attention rate = people who faced the screen / people who passed by. Derived
 // from the totals (not the API's `attention_rate`, which divided by impressions
 // and could exceed 100%) so the list, dashboard, and detail page never drift.

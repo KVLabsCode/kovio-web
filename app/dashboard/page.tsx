@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatCount, formatMoney, formatPct, attentionRate } from '@/lib/format';
+import { EngagementFunnel } from '@/components/EngagementFunnel';
 import type { Campaign, RecentImpression } from '@/lib/types';
 import AppShell from '@/components/AppShell';
 import RangePills from '@/components/RangePills';
@@ -416,6 +417,13 @@ export default async function DashboardPage({
           <AudienceMetric label="Audience samples" value={formatCount(d.audience_30d.samples)} />
           <AudienceMetric label="Avg dwell on look" value={dwell > 0 ? `${dwell}s` : '—'} />
           <AudienceMetric label="Nearest approach" value={nearest != null ? `${nearest}m` : '—'} />
+          <AudienceMetric label="People nearby" value={d.audience_30d.avg_people_nearby != null ? formatCount(Math.round(d.audience_30d.avg_people_nearby)) : '—'} />
+          <AudienceMetric label="Look rate" value={d.audience_30d.look_rate != null ? formatPct(d.audience_30d.look_rate) : '—'} />
+          <AudienceMetric label="Phones out" value={d.audience_30d.total_phones_out ? formatCount(d.audience_30d.total_phones_out) : '—'} />
+          <AudienceMetric label="Interactions" value={d.audience_30d.total_interactions ? formatCount(d.audience_30d.total_interactions) : '—'} />
+        </div>
+        <div className="mt-6 border-t border-line pt-5">
+          <EngagementFunnel summary={d.audience_30d} />
         </div>
       </div>
 

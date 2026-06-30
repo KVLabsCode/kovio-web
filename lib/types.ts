@@ -75,10 +75,24 @@ export interface AudienceSummary {
   avg_reach: number;
   peak_reach: number;
   avg_attended: number;
-  // Sentinel: 0 means "no dwell data yet" (no column) — guard on the value.
+  // Real dwell since migration 007; 0 is still the "no data" sentinel — guard
+  // on the value (> 0 ? ... : "—"), not on `samples`.
   avg_dwell_s: number;
   // Closest LiDAR approach (metres) during ads in the window; null => "—".
   nearest_m: number | null;
+
+  // --- enriched perception metrics (migration 007; absent => undefined) ---
+  // Crowd, from the lidar's wide field of view.
+  avg_people_nearby?: number | null;
+  peak_people_nearby?: number | null;
+  // Engagement funnel: reach -> looked -> phone-out -> interactions.
+  total_reach?: number;
+  total_looked?: number;
+  look_rate?: number | null; // looked / reach
+  total_phones_out?: number;
+  total_interactions?: number;
+  // Per-kind interaction tallies, e.g. { handshake: 2, wave: 5, phone_out: 1 }.
+  interaction_breakdown?: Record<string, number>;
 }
 
 export interface Dashboard {

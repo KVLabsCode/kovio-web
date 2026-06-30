@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { buildHawkeye } from '@/lib/hawkeye';
 import { formatCount, formatPct } from '@/lib/format';
+import { EngagementFunnel } from '@/components/EngagementFunnel';
 import AppShell from '@/components/AppShell';
 
 export default async function CampaignReportPage({
@@ -261,6 +262,15 @@ export default async function CampaignReportPage({
             Dwell is measured on-device from first glance to look-away — no faces stored.
           </div>
         </div>
+      </div>
+
+      {/* 6. Interactions & engagement funnel */}
+      <div className="bg-panel border border-line rounded-[16px] px-7 py-6 mt-6">
+        <div className="text-[20px] font-semibold text-ink">Interactions</div>
+        <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint mt-1 mb-5">
+          PASSED BY → LOOKED → PHONE OUT → INTERACTED · ON-DEVICE, NEVER IDENTITY
+        </div>
+        <EngagementFunnel summary={stats.audience_30d} />
       </div>
     </AppShell>
   );

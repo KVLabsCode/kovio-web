@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatCount, formatMoney, formatRelative } from '@/lib/format';
+import { formatCount, formatMoney, formatRelative, formatPct } from '@/lib/format';
+import { EngagementFunnel } from '@/components/EngagementFunnel';
 import AppShell from '@/components/AppShell';
 import { SectionHeader } from '@/components/SectionHeader';
 import { MetricCard } from '@/components/MetricCard';
@@ -130,6 +131,24 @@ export default async function FleetDetailPage({
             value={formatCount(stats.audience_30d.samples)}
             context="LiDAR ticks during ads"
           />
+          <MetricCard
+            label="PEOPLE NEARBY"
+            value={stats.audience_30d.avg_people_nearby != null ? formatCount(Math.round(stats.audience_30d.avg_people_nearby)) : '—'}
+            context="lidar crowd"
+          />
+          <MetricCard
+            label="LOOK RATE"
+            value={stats.audience_30d.look_rate != null ? formatPct(stats.audience_30d.look_rate) : '—'}
+            context="looked / passed by"
+          />
+          <MetricCard
+            label="INTERACTIONS"
+            value={stats.audience_30d.total_interactions ? formatCount(stats.audience_30d.total_interactions) : '—'}
+            context="handshakes, waves, more"
+          />
+        </div>
+        <div className="mt-6 rounded-lg border border-border-soft bg-card p-6">
+          <EngagementFunnel summary={stats.audience_30d} />
         </div>
       </div>
 

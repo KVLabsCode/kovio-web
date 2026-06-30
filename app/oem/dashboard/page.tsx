@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatCount, formatMoney, formatRelative } from '@/lib/format';
+import { formatCount, formatMoney, formatRelative, formatPct } from '@/lib/format';
 import AppShell from '@/components/AppShell';
 import { SectionHeader } from '@/components/SectionHeader';
 import { MetricCard } from '@/components/MetricCard';
+import { EngagementFunnel } from '@/components/EngagementFunnel';
 import Chart from '@/components/ChartClient';
 import { LiveActivityFeed, type ActivityEvent } from '@/components/LiveActivityFeed';
 
@@ -161,6 +162,29 @@ export default async function OemDashboardPage({
             value={formatCount(d.audience_30d.samples)}
             context="LiDAR ticks during ads"
           />
+          <MetricCard
+            label="PEOPLE NEARBY"
+            value={d.audience_30d.avg_people_nearby != null ? formatCount(Math.round(d.audience_30d.avg_people_nearby)) : '—'}
+            context={d.audience_30d.peak_people_nearby != null ? `peak ${formatCount(d.audience_30d.peak_people_nearby)} around robot` : 'lidar crowd'}
+          />
+          <MetricCard
+            label="LOOK RATE"
+            value={d.audience_30d.look_rate != null ? formatPct(d.audience_30d.look_rate) : '—'}
+            context="looked / passed by"
+          />
+          <MetricCard
+            label="PHONES OUT"
+            value={d.audience_30d.total_phones_out ? formatCount(d.audience_30d.total_phones_out) : '—'}
+            context="took phone out"
+          />
+          <MetricCard
+            label="INTERACTIONS"
+            value={d.audience_30d.total_interactions ? formatCount(d.audience_30d.total_interactions) : '—'}
+            context="handshakes, waves, more"
+          />
+        </div>
+        <div className="mt-6 rounded-lg border border-border-soft bg-card p-6">
+          <EngagementFunnel summary={d.audience_30d} />
         </div>
       </div>
 
