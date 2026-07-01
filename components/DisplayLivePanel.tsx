@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { EngagementFunnel } from '@/components/EngagementFunnel';
+import HawkeyeRadar from '@/components/HawkeyeRadar';
 import { formatCount, formatDwell, formatPct, formatRelative } from '@/lib/format';
 import type { DisplayLive, DisplayMetrics } from '@/lib/types';
 
@@ -70,6 +71,7 @@ export default function DisplayLivePanel({
   const summary = live?.summary ?? initial.summary;
   const active = live?.active ?? initial.active;
   const events = live?.events ?? [];
+  const radar = live?.radar ?? null;
   const lookRate = summary.look_rate;
 
   return (
@@ -139,6 +141,16 @@ export default function DisplayLivePanel({
 
       <div className="mt-5 border-t border-border-soft pt-4">
         <EngagementFunnel summary={summary} />
+      </div>
+
+      {/* Real 360° LiDAR radar — actual clustered people, not the advertiser
+          tile's Math.random blips. Idle until a lidar-equipped robot streams. */}
+      <div className="mt-5 border-t border-border-soft pt-4">
+        <HawkeyeRadar
+          radar={radar}
+          passed={summary.total_passed_lidar ?? 0}
+          peakNearby={summary.peak_people_nearby ?? null}
+        />
       </div>
 
       {/* Live event feed (real events, real timestamps) */}

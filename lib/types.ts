@@ -85,6 +85,9 @@ export interface AudienceSummary {
   // Crowd, from the lidar's wide field of view.
   avg_people_nearby?: number | null;
   peak_people_nearby?: number | null;
+  // Unique people who passed through the lidar field (counted once on entry;
+  // NOT a per-frame sum). 0 until a lidar-equipped robot streams.
+  total_passed_lidar?: number;
   // Engagement funnel: reach -> looked -> phone-out -> interactions.
   total_reach?: number;
   total_looked?: number;
@@ -290,10 +293,20 @@ export interface DisplayMetrics {
   active: ActiveAssignment[];
 }
 
+// One lidar frame's people, for the live 360° radar. blips are [range_m,
+// bearing_deg] with bearing 0=front, +=right. null when no lidar has streamed.
+export interface DisplayRadar {
+  blips: [number, number][];
+  people_nearby: number | null;
+  nearest_m: number | null;
+  ts: string;
+}
+
 // GET /oem/v1/displays/{id}/live — recent-window summary + event feed (polled).
 export interface DisplayLive {
   window_minutes: number;
   summary: AudienceSummary;
   events: DisplayLiveEvent[];
+  radar: DisplayRadar | null;
   active: ActiveAssignment[];
 }
