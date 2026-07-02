@@ -9,18 +9,66 @@
 // /display/<code>/data endpoint) instead of reloading the page — so the screen
 // never drops out of fullscreen and the wake-lock holds. A paused/unknown
 // campaign just shows black and resumes on its own when it goes active again.
-// No QR, no budget — advertiser content only.
+//
+// An optional QR overlay (one per campaign) is rendered on top of the playlist,
+// positioned/sized by the OEM in the editor. It encodes /r/<link_code>, so scans
+// are counted before redirecting to the advertiser's target URL.
 
 import { fetchPlaylist } from '@/lib/display';
+import { createClient } from '@/lib/supabase/server';
+import { qrPngDataUrl } from '@/lib/qr';
 
 const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8' };
 
+interface DisplayQrRow {
+  enabled: boolean;
+  target_url: string;
+  link_code: string;
+  x: number;
+  y: number;
+  size: number;
+}
+
+// Build the fixed-position QR overlay markup, or '' when there's no active QR.
+async function qrOverlayHtml(code: string, origin: string): Promise<string> {
+  let row: DisplayQrRow | null = null;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.rpc('get_display_qr', { p_code: code });
+    row = Array.isArray(data) ? (data[0] as DisplayQrRow) ?? null : (data as DisplayQrRow | null);
+  } catch {
+    return '';
+  }
+  if (!row || !row.enabled || !row.link_code) return '';
+
+  let img: string;
+  try {
+    img = await qrPngDataUrl(`${origin}/r/${encodeURIComponent(row.link_code)}`);
+  } catch {
+    return '';
+  }
+
+  const left = (row.x * 100).toFixed(3);
+  const top = (row.y * 100).toFixed(3);
+  const width = (row.size * 100).toFixed(3);
+  return `<div class="qrwrap" style="left:${left}%;top:${top}%;width:${width}%">` +
+    `<img src="${img}" alt="Scan"></div>`;
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ code: string }> },
 ): Promise<Response> {
   const { code } = await ctx.params;
-  const { items, default_image_seconds } = await fetchPlaylist(code);
+  // Resolve the public origin for the scannable QR. Behind Vercel's proxy the
+  // forwarded headers carry the real host/scheme; fall back to the request URL.
+  const fwdHost = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  const fwdProto = request.headers.get('x-forwarded-proto') ?? 'https';
+  const origin = fwdHost ? `${fwdProto}://${fwdHost}` : new URL(request.url).origin;
+  const [{ items, default_image_seconds }, qrHtml] = await Promise.all([
+    fetchPlaylist(code),
+    qrOverlayHtml(code, origin),
+  ]);
 
   // Inline the initial playlist safely (guard against </script> breakouts).
   const playlistJson = JSON.stringify(items).replace(/</g, '\\u003c');
@@ -40,8 +88,11 @@ export async function GET(
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
   .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
   .art{width:100%;height:100%;object-fit:cover;background:#000}
+  .qrwrap{position:fixed;box-sizing:border-box;aspect-ratio:1/1;background:#fff;
+    padding:1.1%;border-radius:8px;box-shadow:0 6px 30px rgba(0,0,0,.45);z-index:10}
+  .qrwrap img{display:block;width:100%;height:100%;image-rendering:pixelated}
 </style></head>
-<body><div class="stage" id="stage"></div>
+<body><div class="stage" id="stage"></div>${qrHtml}
 <script>
 (function(){
   var PLAYLIST = ${playlistJson};

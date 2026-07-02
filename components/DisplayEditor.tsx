@@ -1,10 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { apiClient, type DisplayItemInput } from '@/lib/api-client';
 import CopyLinkButton from '@/components/CopyLinkButton';
+import DisplayQrEditor from '@/components/DisplayQrEditor';
+import { loadDisplayQr, saveDisplayQr } from '@/lib/links';
+import { DEFAULT_DISPLAY_QR, type DisplayQrConfig } from '@/lib/display-qr';
 import type { CustomDisplay } from '@/lib/types';
 
 const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
@@ -64,6 +67,24 @@ export default function DisplayEditor({
 
   const code = initial?.code ?? null;
   const publicPath = initial?.public_path ?? (code ? `/display/${code}` : null);
+
+  const [qr, setQr] = useState<DisplayQrConfig>(DEFAULT_DISPLAY_QR);
+
+  // Load any saved QR overlay for this campaign (edit mode only — a create has
+  // no code yet).
+  useEffect(() => {
+    if (mode !== 'edit' || !code) return;
+    let alive = true;
+    loadDisplayQr(code).then((cfg) => {
+      if (alive && cfg) setQr(cfg);
+    });
+  }, [mode, code]);
+
+  // Show the first image (or first item) behind the QR placement editor.
+  const qrPreview = useMemo(() => {
+    const it = items.find((i) => i.media_type === 'image') ?? items[0];
+    return it ? { url: it.media_url, type: it.media_type } : null;
+  }, [items]);
 
   const payloadItems = useMemo<DisplayItemInput[]>(
     () =>
@@ -162,6 +183,11 @@ export default function DisplayEditor({
           setSaveErr(error?.detail ?? 'Could not create the display.');
           return;
         }
+        // Persist the QR overlay against the freshly-minted code (best-effort —
+        // the campaign exists either way; they can adjust it on the edit page).
+        if (qr.enabled || qr.targetUrl.trim()) {
+          await saveDisplayQr(data.code, qr);
+        }
         router.push(`/oem/campaigns/${data.id}`);
         router.refresh();
         return;
@@ -182,6 +208,14 @@ export default function DisplayEditor({
       if (rep.error) {
         setSaveErr(rep.error.detail ?? 'Could not save the playlist.');
         return;
+      }
+      if (code) {
+        const qrRes = await saveDisplayQr(code, qr);
+        if (qrRes.error) {
+          setSaveErr(`Saved the playlist, but the QR code didn’t save: ${qrRes.error}`);
+          return;
+        }
+        if (qrRes.linkCode !== qr.linkCode) setQr((q) => ({ ...q, linkCode: qrRes.linkCode }));
       }
       setSavedTick((t) => t + 1);
       setPreviewKey((k) => k + 1);
@@ -390,6 +424,9 @@ export default function DisplayEditor({
           </ul>
         )}
       </div>
+
+      {/* QR overlay */}
+      <DisplayQrEditor config={qr} onChange={setQr} preview={qrPreview} />
 
       {/* Actions */}
       {saveErr && <p className="mt-5 text-sm text-danger">{saveErr}</p>}
