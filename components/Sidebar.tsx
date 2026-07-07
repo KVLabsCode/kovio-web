@@ -40,6 +40,7 @@ export default async function Sidebar() {
         { label: 'Overview', href: '/oem/dashboard', icon: 'overview' },
         { label: 'Fleets', href: '/oem/fleets', icon: 'fleets', count: dash.data?.total_fleets },
         { label: 'Campaigns', href: '/oem/campaigns', icon: 'displays' },
+        { label: 'Settings', href: '/oem/settings', icon: 'settings' },
       ];
       return (
         <RailSidebar

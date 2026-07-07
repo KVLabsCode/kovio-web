@@ -9,6 +9,7 @@ import { updateSession } from '@/lib/supabase/middleware';
 const PUBLIC_PATHS = [
   '/login',
   '/oem/login',
+  '/admin/login',
   '/auth/callback',
   '/auth/confirm',
   '/r/',
@@ -23,8 +24,12 @@ export async function proxy(request: NextRequest) {
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    // Keep fleet operators in the OEM flow; everyone else to advertiser login.
-    url.pathname = pathname.startsWith('/oem') ? '/oem/login' : '/login';
+    // Route each surface to its own login.
+    url.pathname = pathname.startsWith('/admin')
+      ? '/admin/login'
+      : pathname.startsWith('/oem')
+        ? '/oem/login'
+        : '/login';
     return NextResponse.redirect(url);
   }
 

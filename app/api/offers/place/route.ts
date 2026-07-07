@@ -41,6 +41,10 @@ export async function POST(request: Request): Promise<Response> {
     p_budget_cents: Math.max(0, Math.round(body.budgetCents ?? 0)),
     p_cpi: body.cpiCents ?? null,
     p_message: body.message?.trim() || null,
+    p_start_at: body.startAt || null,
+    p_end_at: body.endAt || null,
+    p_time_window: body.timeWindow || null,
+    p_location_label: body.locationLabel || null,
   });
 
   if (error) {

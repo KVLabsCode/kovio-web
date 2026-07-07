@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import type { OemDirectoryRow, PlaceOfferBody } from '@/lib/offers';
+import type { PlaceOfferBody } from '@/lib/offers';
 
 const IMAGE_MAX = 8 * 1024 * 1024;
 const VIDEO_MAX = 50 * 1024 * 1024;
@@ -13,24 +13,22 @@ const PRESETS: Record<string, Record<string, unknown>> = {
   evening: { field: 'hour_of_day', op: 'between', value: [17, 21] },
   person_watching: { field: 'person_count', op: '>=', value: 1 },
 };
+const TIME_LABELS: Record<string, string> = {
+  morning: 'Mornings 6–11',
+  evening: 'Evenings 5–9',
+  person_watching: 'Only when watched',
+};
 
 const inputCls =
   'w-full rounded-[11px] border border-line bg-field px-[15px] py-[13px] text-[15px] text-ink outline-none transition-colors focus:border-accent';
 const labelCls = 'mb-2 block text-[14px] font-semibold text-ink';
 const sectionCls = 'font-mono text-[12px] uppercase tracking-[0.14em] text-faint';
 
-interface OemGroup {
-  id: string;
-  name: string;
-  fleets: Array<{ id: string; name: string; region: string | null }>;
-}
+type Target = { oem_org_id: string; oem_name: string; link: string };
 
 export default function PlaceCampaignForm() {
-  const [dir, setDir] = useState<OemDirectoryRow[]>([]);
-  const [dirLoading, setDirLoading] = useState(true);
+  const [target, setTarget] = useState<Target | null>(null);
 
-  const [oemId, setOemId] = useState('');
-  const [fleetId, setFleetId] = useState('');
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [creativeUrl, setCreativeUrl] = useState('');
@@ -39,43 +37,26 @@ export default function PlaceCampaignForm() {
   const [category, setCategory] = useState('brand');
   const [presets, setPresets] = useState<Record<string, boolean>>({ morning: false, evening: false, person_watching: false });
   const [budgetUsd, setBudgetUsd] = useState('250');
-  const [cpiCents, setCpiCents] = useState('');
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
   const [message, setMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState<{ emailed: boolean } | null>(null);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase.rpc('kovio_oem_directory');
-      if (alive) {
-        setDir((data as OemDirectoryRow[]) ?? []);
-        setDirLoading(false);
-      }
+      const { data } = await supabase.rpc('kovio_place_target');
+      const row = Array.isArray(data) ? data[0] : data;
+      if (alive && row) setTarget(row as Target);
     })();
     return () => {
       alive = false;
     };
   }, []);
-
-  // Group the flat directory rows into OEM -> fleets.
-  const groups = useMemo<OemGroup[]>(() => {
-    const map = new Map<string, OemGroup>();
-    for (const r of dir) {
-      let g = map.get(r.oem_org_id);
-      if (!g) {
-        g = { id: r.oem_org_id, name: r.oem_name, fleets: [] };
-        map.set(r.oem_org_id, g);
-      }
-      if (r.fleet_id) g.fleets.push({ id: r.fleet_id, name: r.fleet_name ?? 'Fleet', region: r.region });
-    }
-    return [...map.values()];
-  }, [dir]);
-
-  const selectedOem = groups.find((g) => g.id === oemId);
 
   async function handleFile(file: File) {
     const isVid = file.type.startsWith('video');
@@ -107,19 +88,19 @@ export default function PlaceCampaignForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!oemId) return setError('Choose a fleet operator to place with.');
+    if (!target) return setError('The fleet is still loading — one moment.');
     if (!name.trim()) return setError('Give the campaign a name.');
-    if (!creativeUrl) return setError('Add a creative — upload an image or video, or paste a URL.');
+    if (!creativeUrl) return setError('Add a creative — upload an image or video.');
     setLoading(true);
     setError('');
 
-    const targeting = Object.entries(presets)
-      .filter(([, on]) => on)
-      .map(([k]) => PRESETS[k]);
+    const on = Object.entries(presets).filter(([, v]) => v).map(([k]) => k);
+    const targeting = on.map((k) => PRESETS[k]);
+    const timeWindow = on.length ? on.map((k) => TIME_LABELS[k]).join(' · ') : 'All day';
 
     const body: PlaceOfferBody = {
-      targetOemId: oemId,
-      targetFleetId: fleetId || null,
+      targetOemId: target.oem_org_id,
+      targetFleetId: null,
       name: name.trim(),
       advertiserName: brand.trim(),
       creativeUrl,
@@ -127,7 +108,11 @@ export default function PlaceCampaignForm() {
       category,
       targeting,
       budgetCents: Math.round(parseFloat(budgetUsd || '0') * 100),
-      cpiCents: cpiCents ? parseFloat(cpiCents) : null,
+      cpiCents: null,
+      startAt: startAt || null,
+      endAt: endAt || null,
+      timeWindow,
+      locationLabel: target.oem_name,
       message: message.trim() || null,
     };
 
@@ -142,7 +127,7 @@ export default function PlaceCampaignForm() {
       setError(json.error ?? 'Could not place the campaign.');
       return;
     }
-    setDone({ emailed: !!json.emailed });
+    setDone(true);
   }
 
   if (done) {
@@ -153,18 +138,18 @@ export default function PlaceCampaignForm() {
             <path d="m4 12 5 5 11-11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent-dark" />
           </svg>
         </div>
-        <h2 className="mt-5 font-serif text-[30px] font-medium text-ink">Sent to {selectedOem?.name ?? 'the operator'}.</h2>
+        <h2 className="mt-5 font-serif text-[30px] font-medium text-ink">Campaign submitted.</h2>
         <p className="mt-2 text-[16px] text-muted">
-          Your custom campaign is now in their review queue. {done.emailed ? 'We emailed them a heads-up.' : ''} You’ll
-          hear back once they accept or reject it.
+          Your campaign was sent to {target?.oem_name ?? 'the fleet'} for review. Track its status any time under
+          Placements — you’ll hear back once it’s approved.
         </p>
         <div className="mt-6 flex gap-3">
-          <Link href="/campaigns" className="rounded-[11px] bg-accent px-5 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark">
-            Back to campaigns
+          <Link href="/campaigns/placements" className="rounded-[11px] bg-accent px-5 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark">
+            View placements
           </Link>
           <button
             onClick={() => {
-              setDone(null);
+              setDone(false);
               setName('');
               setCreativeUrl('');
               setMessage('');
@@ -180,45 +165,28 @@ export default function PlaceCampaignForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
-      {/* LEFT: form */}
       <div className="max-w-2xl rounded-[16px] border border-line bg-panel p-6">
-        <div className={sectionCls}>Fleet operator</div>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelCls}>Place with</label>
-            <select
-              value={oemId}
-              onChange={(e) => {
-                setOemId(e.target.value);
-                setFleetId('');
-              }}
-              className={inputCls}
-              disabled={dirLoading}
-            >
-              <option value="">{dirLoading ? 'Loading operators…' : 'Choose an operator'}</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+        {/* Destination */}
+        <div className={sectionCls}>Fleet</div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-[12px] border-2 border-accent bg-tint p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-ink">Robot.com</span>
+              <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-white">Live</span>
+            </div>
+            <p className="mt-1.5 text-[13px] text-muted">Humanoid robots on real streets.</p>
+            {target?.link && (
+              <a href={target.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex text-[13px] text-accent-dark hover:text-accent">
+                robot.com ↗
+              </a>
+            )}
           </div>
-          <div>
-            <label className={labelCls}>Fleet (optional)</label>
-            <select
-              value={fleetId}
-              onChange={(e) => setFleetId(e.target.value)}
-              className={inputCls}
-              disabled={!selectedOem || selectedOem.fleets.length === 0}
-            >
-              <option value="">Any fleet</option>
-              {selectedOem?.fleets.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                  {f.region ? ` · ${f.region}` : ''}
-                </option>
-              ))}
-            </select>
+          <div className="rounded-[12px] border border-dashed border-line-strong p-4 opacity-70">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-ink">Kovio&apos;s Fleet</span>
+              <span className="rounded-full border border-line-strong px-2 py-0.5 text-[11px] text-muted">Coming soon</span>
+            </div>
+            <p className="mt-1.5 text-[13px] text-muted">Kovio’s own robots — not yet available.</p>
           </div>
         </div>
 
@@ -294,6 +262,16 @@ export default function PlaceCampaignForm() {
               <input type="number" min="0" step="1" value={budgetUsd} onChange={(e) => setBudgetUsd(e.target.value)} className={inputCls} />
             </div>
           </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelCls}>Start date</label>
+              <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>End date</label>
+              <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
+            </div>
+          </div>
           <div>
             <div className={labelCls}>When to run</div>
             <div className="flex flex-wrap gap-2">
@@ -331,10 +309,10 @@ export default function PlaceCampaignForm() {
         <div className="mt-6 flex items-center gap-3">
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading || uploading || !target}
             className="rounded-[11px] bg-accent px-6 py-[13px] text-[15px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
-            {loading ? 'Placing…' : 'Place campaign →'}
+            {loading ? 'Submitting…' : 'Submit campaign →'}
           </button>
           <Link href="/campaigns" className="text-[15px] text-muted transition-colors hover:text-ink">
             Cancel
@@ -342,17 +320,17 @@ export default function PlaceCampaignForm() {
         </div>
       </div>
 
-      {/* RIGHT: explainer */}
+      {/* Explainer */}
       <aside className="lg:sticky lg:top-8 lg:self-start">
         <div className="rounded-[16px] bg-tint p-6">
           <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">How it works</div>
           <ol className="mt-4 space-y-3 text-[14px] text-ink">
-            <li><span className="font-semibold">1.</span> You place a custom campaign with a fleet operator.</li>
-            <li><span className="font-semibold">2.</span> They review the creative and content, then accept or reject.</li>
-            <li><span className="font-semibold">3.</span> On accept, it’s cleared to run on their robots — you’re notified either way.</li>
+            <li><span className="font-semibold">1.</span> Submit your campaign for the Robot.com fleet.</li>
+            <li><span className="font-semibold">2.</span> Kovio and the operator review the creative and content.</li>
+            <li><span className="font-semibold">3.</span> Once approved it runs on real robots — track status under Placements.</li>
           </ol>
           <p className="mt-4 text-[13px] text-muted">
-            Operators approve content before it runs on their fleet. Nothing goes live without their yes.
+            More fleets are coming to Kovio soon. For now, campaigns run on the Robot.com fleet.
           </p>
         </div>
       </aside>

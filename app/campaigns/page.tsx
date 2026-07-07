@@ -49,6 +49,12 @@ export default async function CampaignsPage({
         </div>
         <div className="flex items-center gap-3">
           <Link
+            href="/campaigns/placements"
+            className="inline-flex items-center rounded-[11px] border border-line-strong px-5 py-[14px] text-[16px] text-ink transition-colors hover:border-accent"
+          >
+            Placements
+          </Link>
+          <Link
             href="/campaigns/place"
             className="inline-flex items-center rounded-[11px] border border-line-strong px-5 py-[14px] text-[16px] text-ink transition-colors hover:border-accent"
           >

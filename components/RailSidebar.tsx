@@ -11,7 +11,8 @@ export type RailIcon =
   | 'reports'
   | 'hawkeye'
   | 'billing'
-  | 'displays';
+  | 'displays'
+  | 'settings';
 export type RailItem = { label: string; href: string; count?: number; icon: RailIcon; live?: boolean };
 
 // The mobile menu button (in AppShell's top bar) dispatches this event; the
@@ -85,6 +86,16 @@ function Icon({ name }: { name: RailIcon }) {
         <path d="M16 12h3l2 3v3h-5" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
         <circle cx="7" cy="18.5" r="1.7" stroke="currentColor" strokeWidth="1.7" />
         <circle cx="17" cy="18.5" r="1.7" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+  if (name === 'settings') {
+    // sliders — campaign / account settings
+    return (
+      <svg {...common} aria-hidden="true">
+        <path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <circle cx="16" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="10" cy="17" r="2.2" stroke="currentColor" strokeWidth="1.7" />
       </svg>
     );
   }
