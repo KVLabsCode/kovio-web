@@ -171,9 +171,29 @@ export default function ClaimClient({ token }: { token: string }) {
     return (
       <div className="min-h-screen bg-bg text-ink">
         <div className="mx-auto max-w-[900px] px-5 pb-36 pt-10 sm:px-8">
-          {/* Blurred until claimed — the moment they claim, the report unblurs
-              right here and the bar flips to "Go to your dashboard". */}
-          <ShowcaseResults orgName={orgName} campaigns={showcases} locked={!claimedKind} />
+          {/* Blurred until claimed. ONE claim action: signed-in users claim
+              straight from the center lock card; signed-out users are pointed
+              to the email bar below. On claim the report unblurs in place. */}
+          <ShowcaseResults
+            orgName={orgName}
+            campaigns={showcases}
+            locked={!claimedKind}
+            lockAction={
+              sessionEmail ? (
+                <div>
+                  <button
+                    onClick={claim}
+                    disabled={busy}
+                    className="inline-flex rounded-[11px] bg-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+                  >
+                    {busy ? 'Claiming…' : `Claim your ${orgName} dashboard →`}
+                  </button>
+                  {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
+                  <p className="mt-2.5 text-[12px] text-muted">Signed in as {sessionEmail}</p>
+                </div>
+              ) : undefined
+            }
+          />
         </div>
 
         {/* sticky claim bar */}
@@ -193,23 +213,16 @@ export default function ClaimClient({ token }: { token: string }) {
                 </button>
               </div>
             ) : sessionEmail ? (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[14px] text-muted">
-                  Signed in as <span className="font-medium text-ink">{sessionEmail}</span> — everything above
-                  is yours to run for real.
-                </p>
-                <div className="flex items-center gap-3">
-                  <form action="/auth/logout" method="post">
-                    <button className="text-[12px] text-muted transition-colors hover:text-ink">Not you?</button>
-                  </form>
-                  <button
-                    onClick={claim}
-                    disabled={busy}
-                    className="rounded-[11px] bg-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
-                  >
-                    {busy ? 'Claiming…' : `Claim your ${orgName} dashboard →`}
-                  </button>
-                </div>
+              // Single claim CTA lives in the center lock card — the bar just
+              // shows who's signed in.
+              <div className="flex flex-wrap items-center justify-center gap-x-2 text-[13px] text-muted">
+                <span>
+                  Signed in as <span className="font-medium text-ink">{sessionEmail}</span> — claim your
+                  dashboard above.
+                </span>
+                <form action="/auth/logout" method="post">
+                  <button className="underline transition-colors hover:text-ink">Not you? Sign out</button>
+                </form>
               </div>
             ) : sent ? (
               <p className="text-center text-[13px] text-ink">

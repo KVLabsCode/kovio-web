@@ -200,10 +200,14 @@ export default function ShowcaseResults({
   orgName,
   campaigns,
   locked = false,
+  lockAction,
 }: {
   orgName: string;
   campaigns: ShowcaseCampaign[];
   locked?: boolean;
+  // Rendered inside the lock card (e.g. the real claim button when signed in).
+  // Falls back to an anchor pointing at the bottom claim bar.
+  lockAction?: React.ReactNode;
 }) {
   const enriched = campaigns.map((c) => fullMetrics(c));
   const totals = enriched.reduce(
@@ -266,12 +270,16 @@ export default function ShowcaseResults({
                 {campaigns.length} campaign{campaigns.length === 1 ? '' : 's'} ran on the Robot.com fleet —
                 claim your {orgName} dashboard below to reveal them and launch for real.
               </p>
-              <a
-                href="#claim-bar"
-                className="mt-4 inline-flex rounded-[11px] bg-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-dark"
-              >
-                Claim your dashboard ↓
-              </a>
+              <div className="mt-4">
+                {lockAction ?? (
+                  <a
+                    href="#claim-bar"
+                    className="inline-flex rounded-[11px] bg-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-dark"
+                  >
+                    Claim your dashboard ↓
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )}
