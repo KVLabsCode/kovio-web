@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import InviteControl from '@/components/InviteControl';
+import AdminShowcase from '@/components/AdminShowcase';
 import { ViewAsButton } from '@/components/ViewAsControls';
 
 export interface AdminAdvertiserOrg {
@@ -89,6 +90,7 @@ export default function AdminAdvertisers({ advertisers }: { advertisers: AdminAd
             </div>
             <ViewAsButton orgId={a.org_id} />
           </div>
+          <AdminShowcase orgId={a.org_id} />
           <InviteControl orgId={a.org_id} pendingInvite={a.pending_invite} who="advertiser" />
         </div>
       ))}

@@ -56,19 +56,39 @@ export async function POST(request: Request): Promise<Response> {
   let emailed = false;
   if (body.send && email) {
     const isAdv = orgKind === 'advertiser';
+    // Prospects with showcase campaigns get the "your results are ready" pitch.
+    let showcaseCount = 0;
+    if (isAdv) {
+      const { data: shows } = await supabase.rpc('kovio_admin_showcases', { p_org_id: body.orgId });
+      showcaseCount = Array.isArray(shows) ? shows.length : 0;
+    }
     const sent = await sendEmail({
       to: email,
-      subject: `Claim your ${orgName} account on Kovio`,
+      subject:
+        showcaseCount > 0
+          ? `${orgName} on real robots — your results are ready`
+          : `Claim your ${orgName} account on Kovio`,
       html: emailShell({
-        heading: `Your ${orgName} account is ready.`,
+        heading:
+          showcaseCount > 0
+            ? `We put ${orgName} on robots. See who looked.`
+            : `Your ${orgName} account is ready.`,
         bodyHtml:
-          `Kovio set up the <strong>${orgName}</strong> ${isAdv ? 'advertiser' : 'fleet-operator'} account for you. ` +
-          `Claim it with this link — sign in with <strong>this email address</strong> and you’re in: ` +
-          (isAdv
-            ? `campaigns on real robots, live insights, and billing.`
-            : `campaign inbox, pricing and schedule settings, and earnings.`) +
-          `<br/><br/>The link expires in 14 days and only works for this email.`,
-        cta: { label: `Claim ${orgName} →`, url: claimUrl },
+          showcaseCount > 0
+            ? `We ran <strong>${orgName}</strong> on the Robot.com fleet and measured real-world attention — ` +
+              `impressions, verified looks and dwell, counted frame-by-frame on the robot itself. ` +
+              `Your full report is one click away, and your account is set up and waiting behind it.` +
+              `<br/><br/>The link expires in 14 days${email ? ' and only works for this email' : ''}.`
+            : `Kovio set up the <strong>${orgName}</strong> ${isAdv ? 'advertiser' : 'fleet-operator'} account for you. ` +
+              `Claim it with this link — sign in with <strong>this email address</strong> and you’re in: ` +
+              (isAdv
+                ? `campaigns on real robots, live insights, and billing.`
+                : `campaign inbox, pricing and schedule settings, and earnings.`) +
+              `<br/><br/>The link expires in 14 days and only works for this email.`,
+        cta: {
+          label: showcaseCount > 0 ? `See your results →` : `Claim ${orgName} →`,
+          url: claimUrl,
+        },
       }),
     });
     emailed = sent.ok;
