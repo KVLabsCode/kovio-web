@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   DURATION_OPTIONS,
   generateMetrics,
+  fullMetrics,
   youtubeEmbedUrl,
   compact,
   type ShowcaseCampaign,
@@ -13,10 +14,37 @@ import {
 
 const inputCls =
   'rounded-md border border-border-soft bg-card px-3 py-2 text-sm text-ink outline-none focus:border-rust';
+const metricLabel = 'mb-1 block text-[10px] font-medium uppercase tracking-[0.08em] text-ink-3';
+
+// The hand-editable metric fields (everything else — hourly curve, dwell split,
+// attention rate — is derived on save).
+const METRIC_FIELDS: Array<{ key: string; label: string; step?: string }> = [
+  { key: 'impressions', label: 'Impressions' },
+  { key: 'attended', label: 'Verified looks' },
+  { key: 'views', label: 'Views' },
+  { key: 'captures', label: 'Captures' },
+  { key: 'qr_scans', label: 'QR scans' },
+  { key: 'touches', label: 'Touches' },
+  { key: 'approaches', label: 'Approaches' },
+  { key: 'engagements', label: 'Engagements' },
+  { key: 'avg_dwell_s', label: 'Avg dwell (s)', step: '0.1' },
+  { key: 'foot_traffic_per_hr', label: 'Foot traffic /hr' },
+];
+
+type Draft = Record<string, string>;
+
+function toDraft(name: string, location: string, duration: string): Draft {
+  const m = generateMetrics(name, location, duration);
+  const d: Draft = {};
+  for (const f of METRIC_FIELDS) d[f.key] = String((m as unknown as Record<string, number>)[f.key] ?? 0);
+  d.peak_window = m.peak_window;
+  return d;
+}
 
 // Manage a prospect advertiser's showcase campaigns: footage (YouTube link or
-// uploaded video) + processed interaction metrics. These render on the claim
-// page as the "results" that invite the advertiser to claim the account.
+// uploaded video) + interaction metrics — auto-generated as a starting point,
+// every number hand-editable before saving. Existing campaigns are editable in
+// place; the claim page renders whatever is saved here.
 export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: string; defaultOpen?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(defaultOpen);
@@ -24,16 +52,27 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
   const [loading, setLoading] = useState(false);
   const [loadedOnce, setLoadedOnce] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [videoKind, setVideoKind] = useState<'youtube' | 'file'>('youtube');
   const [uploading, setUploading] = useState(false);
   const [location, setLocation] = useState('');
   const [duration, setDuration] = useState(DURATION_OPTIONS[0].label);
+  const [draft, setDraft] = useState<Draft>({});
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const preview = name.trim() ? generateMetrics(name.trim(), location.trim(), duration) : null;
+  // Until the admin hand-edits a number, the draft tracks the generator.
+  useEffect(() => {
+    if (touched) return;
+    if (!name.trim()) {
+      setDraft({});
+      return;
+    }
+    setDraft(toDraft(name.trim(), location.trim(), duration));
+  }, [name, location, duration, touched]);
 
   async function load() {
     setLoading(true);
@@ -43,7 +82,6 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
     setLoading(false);
   }
 
-  // Standalone builder page opens (and loads) immediately.
   if (defaultOpen && !loadedOnce) {
     setLoadedOnce(true);
     void load();
@@ -53,6 +91,34 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
     const next = !open;
     setOpen(next);
     if (next && items === null) void load();
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setName('');
+    setVideoUrl('');
+    setVideoKind('youtube');
+    setLocation('');
+    setDuration(DURATION_OPTIONS[0].label);
+    setDraft({});
+    setTouched(false);
+    setError('');
+  }
+
+  function startEdit(s: ShowcaseCampaign) {
+    const m = fullMetrics(s);
+    setEditingId(s.id ?? null);
+    setName(s.name);
+    setVideoUrl(s.video_url ?? '');
+    setVideoKind(s.video_kind);
+    setLocation(s.location_label ?? '');
+    setDuration(s.duration_label ?? DURATION_OPTIONS[0].label);
+    const d: Draft = {};
+    for (const f of METRIC_FIELDS) d[f.key] = String((m as unknown as Record<string, number>)[f.key] ?? 0);
+    d.peak_window = m.peak_window;
+    setDraft(d);
+    setTouched(true); // never clobber loaded values with the generator
+    setError('');
   }
 
   async function handleUpload(file: File) {
@@ -80,31 +146,56 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
     }
   }
 
-  async function add() {
+  async function save() {
     if (!name.trim()) return setError('Name the campaign.');
     if (videoKind === 'youtube' && videoUrl && !youtubeEmbedUrl(videoUrl))
       return setError('That doesn’t look like a YouTube link.');
     setBusy(true);
     setError('');
-    const metrics = generateMetrics(name.trim(), location.trim(), duration);
+
+    // Base (hourly curve, dwell split, peak) from the generator, then overlay
+    // the hand-edited numbers and recompute the attention rate.
+    const base = generateMetrics(name.trim(), location.trim(), duration);
+    const num = (k: string, fallback: number) => {
+      const v = parseFloat(draft[k] ?? '');
+      return Number.isFinite(v) && v >= 0 ? v : fallback;
+    };
+    const impressions = Math.round(num('impressions', base.impressions));
+    const attended = Math.round(num('attended', base.attended));
+    const metrics = {
+      ...base,
+      impressions,
+      attended,
+      attention_rate: impressions > 0 ? attended / impressions : 0,
+      views: Math.round(num('views', base.views)),
+      captures: Math.round(num('captures', base.captures)),
+      qr_scans: Math.round(num('qr_scans', base.qr_scans)),
+      touches: Math.round(num('touches', base.touches)),
+      approaches: Math.round(num('approaches', base.approaches)),
+      engagements: Math.round(num('engagements', base.engagements)),
+      avg_dwell_s: num('avg_dwell_s', base.avg_dwell_s),
+      foot_traffic_per_hr: Math.round(num('foot_traffic_per_hr', base.foot_traffic_per_hr)),
+      peak_window: (draft.peak_window ?? base.peak_window).trim() || base.peak_window,
+    };
+
     const supabase = createClient();
-    const { error } = await supabase.rpc('kovio_admin_add_showcase', {
-      p_org_id: orgId,
+    const args = {
       p_name: name.trim(),
       p_video_url: videoUrl.trim() || null,
       p_video_kind: videoKind,
       p_location: location.trim() || null,
       p_duration: duration,
       p_metrics: metrics,
-    });
+    };
+    const { error } = editingId
+      ? await supabase.rpc('kovio_admin_update_showcase', { p_id: editingId, ...args })
+      : await supabase.rpc('kovio_admin_add_showcase', { p_org_id: orgId, ...args });
     setBusy(false);
     if (error) {
-      setError('Could not add the campaign.');
+      setError(editingId ? 'Could not save the changes.' : 'Could not add the campaign.');
       return;
     }
-    setName('');
-    setVideoUrl('');
-    setLocation('');
+    resetForm();
     await load();
     router.refresh();
   }
@@ -113,9 +204,15 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
     if (!id) return;
     const supabase = createClient();
     await supabase.rpc('kovio_admin_delete_showcase', { p_id: id });
+    if (editingId === id) resetForm();
     await load();
     router.refresh();
   }
+
+  const rate =
+    parseFloat(draft.impressions ?? '') > 0
+      ? Math.round((parseFloat(draft.attended ?? '0') / parseFloat(draft.impressions)) * 100)
+      : null;
 
   return (
     <div className="mt-2">
@@ -143,15 +240,23 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
                           {s.video_url ? ` · ${s.video_kind === 'youtube' ? 'YouTube' : 'video'}` : ' · no footage'}
                         </span>
                       </div>
-                      <button onClick={() => remove(s.id)} className="text-xs text-danger hover:opacity-80">
-                        Remove
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => startEdit(s)} className="text-xs text-rust hover:text-rust-dark">
+                          Edit
+                        </button>
+                        <button onClick={() => remove(s.id)} className="text-xs text-danger hover:opacity-80">
+                          Remove
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
 
-              {/* add form */}
+              {/* form */}
+              {editingId && (
+                <p className="mb-2 text-xs font-medium text-rust">Editing “{name}” — save below or cancel.</p>
+              )}
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Campaign name — e.g. Pylon · SoMa pilot" className={inputCls} />
                 <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location — e.g. SoMa, San Francisco" className={inputCls} />
@@ -188,21 +293,72 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
                 </div>
               </div>
 
-              {preview && (
-                <p className="mt-2 text-xs text-ink-2">
-                  Processed preview: <span className="text-ink">{compact(preview.impressions)} impressions</span> ·{' '}
-                  {compact(preview.attended)} verified looks ({Math.round(preview.attention_rate * 100)}%) ·{' '}
-                  {preview.avg_dwell_s}s avg dwell · peak {preview.peak_window}
-                </p>
+              {/* editable metrics */}
+              {name.trim() && (
+                <div className="mt-3 rounded-md border border-border-soft bg-card p-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-2">
+                      Metrics — edit any number{rate != null ? ` · attention rate ${rate}%` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTouched(false);
+                        setDraft(toDraft(name.trim(), location.trim(), duration));
+                      }}
+                      className="text-xs text-rust hover:text-rust-dark"
+                    >
+                      ↻ Regenerate
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+                    {METRIC_FIELDS.map((f) => (
+                      <div key={f.key}>
+                        <label className={metricLabel}>{f.label}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step={f.step ?? '1'}
+                          value={draft[f.key] ?? ''}
+                          onChange={(e) => {
+                            setTouched(true);
+                            setDraft((d) => ({ ...d, [f.key]: e.target.value }));
+                          }}
+                          className={`${inputCls} w-full`}
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <label className={metricLabel}>Peak window</label>
+                      <input
+                        value={draft.peak_window ?? ''}
+                        onChange={(e) => {
+                          setTouched(true);
+                          setDraft((d) => ({ ...d, peak_window: e.target.value }));
+                        }}
+                        placeholder="e.g. 12 – 2p"
+                        className={`${inputCls} w-full`}
+                      />
+                    </div>
+                  </div>
+                </div>
               )}
+
               {error && <p className="mt-2 text-xs text-danger">{error}</p>}
-              <button
-                onClick={add}
-                disabled={busy || uploading || !name.trim()}
-                className="mt-3 rounded-md bg-rust px-4 py-2 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40"
-              >
-                {busy ? 'Adding…' : '+ Add showcase campaign'}
-              </button>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={save}
+                  disabled={busy || uploading || !name.trim()}
+                  className="rounded-md bg-rust px-4 py-2 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40"
+                >
+                  {busy ? 'Saving…' : editingId ? 'Save changes' : '+ Add showcase campaign'}
+                </button>
+                {editingId && (
+                  <button onClick={resetForm} disabled={busy} className="text-sm text-ink-2 hover:text-ink">
+                    Cancel
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>

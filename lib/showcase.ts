@@ -38,6 +38,7 @@ export interface ShowcaseCampaign {
 }
 
 export const DURATION_OPTIONS: Array<{ label: string; hours: number }> = [
+  { label: '2 hours', hours: 2 },
   { label: 'Half-day (6h)', hours: 6 },
   { label: 'Full day (12h)', hours: 12 },
   { label: 'Weekend (2 days)', hours: 24 },

@@ -26,3 +26,24 @@ language sql security definer set search_path = public stable as $$
    order by s.created_at;
 $$;
 grant execute on function public.kovio_my_showcases() to authenticated;
+
+-- Edit an existing showcase campaign in place (admin-gated).
+create or replace function public.kovio_admin_update_showcase(
+  p_id uuid, p_name text, p_video_url text, p_video_kind text,
+  p_location text, p_duration text, p_metrics jsonb)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.kovio_is_admin() then raise exception 'not_admin'; end if;
+  if coalesce(trim(p_name),'') = '' then raise exception 'invalid_name'; end if;
+  update public.showcase_campaigns set
+    name = trim(p_name),
+    video_url = nullif(p_video_url,''),
+    video_kind = case when p_video_kind in ('youtube','file') then p_video_kind else 'youtube' end,
+    location_label = nullif(p_location,''),
+    duration_label = nullif(p_duration,''),
+    metrics = coalesce(p_metrics,'{}'::jsonb)
+  where id = p_id;
+  if not found then raise exception 'not_found'; end if;
+end; $$;
+grant execute on function public.kovio_admin_update_showcase(uuid,text,text,text,text,text,jsonb) to authenticated;
