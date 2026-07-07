@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OfferComments from '@/components/OfferComments';
+import DateField from '@/components/DateField';
 import { usd, dateRange, summarizeTargeting, type IncomingOffer } from '@/lib/offers';
+
+const dateFieldSm =
+  'flex w-40 items-center justify-between rounded-md border border-border-soft bg-card px-2.5 py-2 text-left text-sm text-ink outline-none focus:border-rust';
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
@@ -62,11 +66,11 @@ function ReschedulePanel({ offer, onDone }: { offer: IncomingOffer; onDone: () =
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <label className="mb-1 block text-[11px] uppercase tracking-wide text-ink-3">New start</label>
-          <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={smallInput} />
+          <DateField value={startAt} onChange={setStartAt} max={endAt || undefined} placeholder="New start" className={dateFieldSm} />
         </div>
         <div>
           <label className="mb-1 block text-[11px] uppercase tracking-wide text-ink-3">New end</label>
-          <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={smallInput} />
+          <DateField value={endAt} onChange={setEndAt} min={startAt || undefined} placeholder="New end" className={dateFieldSm} />
         </div>
         <input
           value={note}

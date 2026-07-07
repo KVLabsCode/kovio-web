@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   '/oem/login',
   '/admin/login',
   '/api/admin/send-link', // pre-auth by definition: it sends the admin magic link
+  '/claim/', // operator account-claim links land here before sign-in
   '/auth/callback',
   '/auth/confirm',
   '/r/',

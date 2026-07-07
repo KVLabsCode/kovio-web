@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { apiClient } from '@/lib/api-client';
+import DateField from '@/components/DateField';
 import {
   daysBetween,
   totalCents,
@@ -58,6 +59,8 @@ export default function PlaceCampaignForm() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // After the first submit attempt, field errors validate live on every change.
+  const [attempted, setAttempted] = useState(false);
   // '' = not done · 'paying' = redirecting to Stripe · 'done' = submitted
   // (payment deferred, e.g. zero budget or checkout unavailable)
   const [done, setDone] = useState<'' | 'paying' | 'done'>('');
@@ -91,6 +94,45 @@ export default function PlaceCampaignForm() {
   const perDay = terms?.price_unit === 'per_day';
   const minDays = terms?.min_days ?? 1;
 
+  // ---- Field validation ------------------------------------------------------
+  function validateFields(): Record<string, string> {
+    const e: Record<string, string> = {};
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${`${today.getMonth() + 1}`.padStart(2, '0')}-${`${today.getDate()}`.padStart(2, '0')}`;
+
+    const n = name.trim();
+    if (!n) e.name = 'Give the campaign a name.';
+    else if (n.length < 3) e.name = 'Campaign name needs at least 3 characters.';
+    else if (n.length > 80) e.name = 'Keep the name under 80 characters.';
+
+    const b = brand.trim();
+    if (!b) e.brand = 'Tell the operator which brand this is.';
+    else if (b.length < 2) e.brand = 'Brand name needs at least 2 characters.';
+
+    if (!creativeUrl) e.creative = 'Add a creative — upload an image or video, or paste a URL.';
+    else if (!/^https?:\/\/\S+\.\S+/.test(creativeUrl)) e.creative = 'That doesn’t look like a valid creative URL (must start with https://).';
+
+    if (startAt && startAt < todayKey) e.startAt = 'Start date can’t be in the past.';
+    if (startAt && endAt && endAt < startAt) e.endAt = 'End date must be after the start date.';
+    if (terms) {
+      if (perDay && !startAt) e.startAt = e.startAt ?? 'Pick a start date — pricing is per day.';
+      if (perDay && !endAt) e.endAt = e.endAt ?? 'Pick an end date — pricing is per day.';
+      if (perDay && startAt && endAt && days > 0 && days < minDays)
+        e.endAt = `This fleet has a ${minDays}-day minimum.`;
+      if (terms.available_from && startAt && startAt < terms.available_from)
+        e.startAt = `This fleet is available ${dateRange(terms.available_from, terms.available_to)}.`;
+      if (terms.available_to && endAt && endAt > terms.available_to)
+        e.endAt = `This fleet is available ${dateRange(terms.available_from, terms.available_to)}.`;
+      if (terms.time_windows.length > 0 && selWindows.length === 0) e.windows = 'Pick at least one time window.';
+      if (terms.locations.length > 0 && selLocs.length === 0) e.locations = 'Pick at least one location.';
+    }
+    if (message.length > 1000) e.message = 'Keep the message under 1,000 characters.';
+    return e;
+  }
+  const fieldErrors = attempted ? validateFields() : {};
+  const FieldError = ({ id }: { id: string }) =>
+    fieldErrors[id] ? <p className="mt-1.5 text-[13px] text-danger">{fieldErrors[id]}</p> : null;
+
   async function handleFile(file: File) {
     const isVid = file.type.startsWith('video');
     const isImg = file.type.startsWith('image');
@@ -122,20 +164,12 @@ export default function PlaceCampaignForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!target) return setError('The fleet is still loading — one moment.');
-    if (!name.trim()) return setError('Give the campaign a name.');
-    if (!creativeUrl) return setError('Add a creative — upload an image or video.');
-    // Everything must fit within the operator's published options.
-    if (terms) {
-      if (perDay && (!startAt || !endAt)) return setError('Pick your start and end dates — pricing is per day.');
-      if (perDay && days < minDays) return setError(`This fleet has a ${minDays}-day minimum.`);
-      if (terms.available_from && startAt && startAt < terms.available_from)
-        return setError(`This fleet is available ${dateRange(terms.available_from, terms.available_to)}.`);
-      if (terms.available_to && endAt && endAt > terms.available_to)
-        return setError(`This fleet is available ${dateRange(terms.available_from, terms.available_to)}.`);
-      if (terms.time_windows.length > 0 && selWindows.length === 0)
-        return setError('Pick at least one time window.');
-      if (terms.locations.length > 0 && selLocs.length === 0)
-        return setError('Pick at least one location.');
+    // Full field validation — errors render inline under each field.
+    setAttempted(true);
+    const errs = validateFields();
+    if (Object.keys(errs).length > 0) {
+      setError('Fix the highlighted fields to continue.');
+      return;
     }
     setLoading(true);
     setError('');
@@ -284,11 +318,13 @@ export default function PlaceCampaignForm() {
         <div className="mt-3 space-y-4">
           <div>
             <label className={labelCls}>Campaign name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Spring launch — SF" required />
+            <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Spring launch — SF" maxLength={80} required />
+            <FieldError id="name" />
           </div>
           <div>
             <label className={labelCls}>Brand / advertiser</label>
-            <input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} placeholder="Shown to the operator" />
+            <input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} placeholder="The brand the operator will see" maxLength={80} required />
+            <FieldError id="brand" />
           </div>
           <div>
             <label className={labelCls}>Creative</label>
@@ -334,6 +370,7 @@ export default function PlaceCampaignForm() {
                 />
               </>
             )}
+            <FieldError id="creative" />
           </div>
           <div>
             <label className={labelCls}>Category</label>
@@ -348,27 +385,27 @@ export default function PlaceCampaignForm() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Start date</label>
-              <input
-                type="date"
+              <DateField
                 value={startAt}
-                onChange={(e) => setStartAt(e.target.value)}
+                onChange={setStartAt}
                 min={terms?.available_from ?? undefined}
                 max={terms?.available_to ?? undefined}
-                className={inputCls}
+                placeholder="Campaign starts"
                 required={!!terms && perDay}
               />
+              <FieldError id="startAt" />
             </div>
             <div>
               <label className={labelCls}>End date</label>
-              <input
-                type="date"
+              <DateField
                 value={endAt}
-                onChange={(e) => setEndAt(e.target.value)}
+                onChange={setEndAt}
                 min={startAt || terms?.available_from || undefined}
                 max={terms?.available_to ?? undefined}
-                className={inputCls}
+                placeholder="Campaign ends"
                 required={!!terms && perDay}
               />
+              <FieldError id="endAt" />
             </div>
           </div>
           {terms && (terms.available_from || terms.available_to) && (
@@ -429,6 +466,7 @@ export default function PlaceCampaignForm() {
                   ))}
                 </div>
                 <p className="mt-1.5 text-[13px] text-muted">These are the windows this fleet runs campaigns.</p>
+                <FieldError id="windows" />
               </>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -471,6 +509,7 @@ export default function PlaceCampaignForm() {
                 ))}
               </div>
               <p className="mt-1.5 text-[13px] text-muted">The fleet’s coverage — pick where your campaign runs.</p>
+              <FieldError id="locations" />
             </div>
           )}
           <div>
@@ -479,9 +518,11 @@ export default function PlaceCampaignForm() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
+              maxLength={1000}
               className={`${inputCls} resize-none`}
               placeholder="Anything they should know about the brand or creative."
             />
+            <FieldError id="message" />
           </div>
         </div>
 

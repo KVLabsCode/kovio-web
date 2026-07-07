@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import DateField from '@/components/DateField';
 import { dateRange, TIME_WINDOW_OPTIONS, type GeoPoint, type MyOemTerms } from '@/lib/offers';
+
+// DateField skin matching this form's compact input style.
+const dateFieldCls =
+  'flex w-full items-center justify-between rounded-md border border-border-soft bg-card px-3 py-2.5 text-left text-sm text-ink outline-none transition-colors focus:border-rust';
 
 // Free geocoder (OpenStreetMap Nominatim) so locations are picked from real
 // places with exact coordinates — no free typing. Swappable for Google Places
@@ -324,11 +329,11 @@ export default function OemSettingsForm({
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label className={labelCls}>Available from</label>
-            <input type="date" value={availFrom} onChange={(e) => setAvailFrom(e.target.value)} className={inputCls} />
+            <DateField value={availFrom} onChange={setAvailFrom} max={availTo || undefined} placeholder="Open-ended" className={dateFieldCls} />
           </div>
           <div>
             <label className={labelCls}>Available to</label>
-            <input type="date" value={availTo} onChange={(e) => setAvailTo(e.target.value)} className={inputCls} />
+            <DateField value={availTo} onChange={setAvailTo} min={availFrom || undefined} placeholder="Open-ended" className={dateFieldCls} />
           </div>
         </div>
 

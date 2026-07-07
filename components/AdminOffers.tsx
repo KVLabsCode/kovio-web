@@ -3,8 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import DateField from '@/components/DateField';
 import { usd, dateRange } from '@/lib/offers';
 import type { AdminOperator } from '@/components/AdminOperators';
+
+const dateFieldSm =
+  'flex w-full items-center justify-between rounded-md border border-border-soft bg-card px-2.5 py-1.5 text-left text-sm text-ink outline-none focus:border-rust';
 
 export interface AdminOffer {
   id: string;
@@ -83,11 +87,11 @@ function EditPanel({ offer, onDone }: { offer: AdminOffer; onDone: () => void })
         </div>
         <div>
           <label className={smallLabel}>Start</label>
-          <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={`${smallInput} w-full`} />
+          <DateField value={startAt} onChange={setStartAt} max={endAt || undefined} placeholder="Start" className={dateFieldSm} />
         </div>
         <div>
           <label className={smallLabel}>End</label>
-          <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={`${smallInput} w-full`} />
+          <DateField value={endAt} onChange={setEndAt} min={startAt || undefined} placeholder="End" className={dateFieldSm} />
         </div>
         <div>
           <label className={smallLabel}>Budget (USD)</label>
