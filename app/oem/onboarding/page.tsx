@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { KovioMark } from '@/components/KovioMark';
 
 function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -58,22 +59,24 @@ export default function OemOnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-16">
+    <div className="flex min-h-screen items-center justify-center bg-bg px-6 py-16">
       <div className="w-full max-w-[1040px]">
-        <div className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">
-          Kovio for fleets
+        <div className="flex items-center gap-[11px]">
+          <KovioMark className="h-6 w-6 text-accent" />
+          <span className="font-mono text-[15px] tracking-[0.18em] text-ink">KOVIO</span>
+          <span className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">/ for fleets</span>
         </div>
 
-        <h1 className="mt-8 max-w-[900px] font-serif text-[68px] font-medium leading-[1.02] tracking-[-0.02em] text-ink">
+        <h1 className="mt-8 max-w-[900px] font-serif text-[clamp(40px,6vw,68px)] font-medium leading-[1.03] tracking-[-0.02em] text-ink">
           Put your robots <em className="italic text-accent">to work.</em>
         </h1>
-        <p className="mt-6 max-w-[680px] text-[22px] leading-[1.5] text-muted">
+        <p className="mt-6 max-w-[680px] text-[clamp(17px,2.4vw,22px)] leading-[1.5] text-muted">
           Register your fleet to turn the screens already rolling through the city into paid ad
           inventory — and earn a revenue share on every verified impression.
         </p>
 
         {/* Value props */}
-        <div className="mt-12 grid grid-cols-3 gap-5">
+        <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-3">
           {VALUE_PROPS.map((v, i) => (
             <div key={v.title} className="rounded-[16px] border border-line bg-panel px-7 py-6">
               <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-tint font-mono text-[14px] text-accent-dark">

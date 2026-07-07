@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { KovioMark } from '@/components/KovioMark';
+import { emailError } from '@/lib/email-validation';
 
 type Mode = 'signin' | 'signup';
 
@@ -40,6 +41,13 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Enforce a work email on sign-up; sign-in only needs a valid address so
+    // existing accounts are never locked out.
+    const emailErr = emailError(email, isSignup);
+    if (emailErr) {
+      setError(emailErr);
+      return;
+    }
     setLoading(true);
     setError('');
     const supabase = createClient();
