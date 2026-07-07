@@ -24,6 +24,8 @@ export default function OemSettingsForm({
   const [windows, setWindows] = useState<string[]>(initial?.time_windows?.length ? initial.time_windows : ['All day']);
   const [locations, setLocations] = useState<string[]>(initial?.locations ?? []);
   const [locInput, setLocInput] = useState('');
+  // Which location the coverage map is focused on (chips act as the filter).
+  const [focusedLoc, setFocusedLoc] = useState<string>(initial?.locations?.[0] ?? '');
   const [availFrom, setAvailFrom] = useState(initial?.available_from ?? '');
   const [availTo, setAvailTo] = useState(initial?.available_to ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
@@ -37,8 +39,19 @@ export default function OemSettingsForm({
   }
   function addLocation() {
     const v = locInput.trim();
-    if (v && !locations.includes(v)) setLocations((p) => [...p, v]);
+    if (v && !locations.includes(v)) {
+      setLocations((p) => [...p, v]);
+      setFocusedLoc(v); // jump the map to what was just added
+    }
     setLocInput('');
+  }
+
+  function removeLocation(l: string) {
+    setLocations((p) => {
+      const next = p.filter((x) => x !== l);
+      if (focusedLoc === l) setFocusedLoc(next[0] ?? '');
+      return next;
+    });
   }
 
   async function save() {
@@ -133,16 +146,65 @@ export default function OemSettingsForm({
             </button>
           </div>
           {locations.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {locations.map((l) => (
-                <span key={l} className="inline-flex items-center gap-1.5 rounded-full bg-page px-3 py-1.5 text-sm text-ink">
-                  {l}
-                  <button type="button" onClick={() => setLocations((p) => p.filter((x) => x !== l))} className="text-ink-3 hover:text-danger" aria-label={`Remove ${l}`}>
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
+            <>
+              {/* Chips double as the map filter — click one to focus it below. */}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {locations.map((l) => (
+                  <span
+                    key={l}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                      focusedLoc === l
+                        ? 'border-rust bg-rust/10 text-rust'
+                        : 'border-transparent bg-page text-ink'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setFocusedLoc(l)}
+                      className="transition-opacity hover:opacity-80"
+                      aria-label={`Show ${l} on the map`}
+                    >
+                      {l}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeLocation(l)}
+                      className="text-ink-3 hover:text-danger"
+                      aria-label={`Remove ${l}`}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              {/* Coverage map — keyless Google Maps embed of the focused location. */}
+              {focusedLoc && (
+                <div className="mt-3 overflow-hidden rounded-lg border border-border-soft">
+                  <iframe
+                    key={focusedLoc}
+                    title={`Map of ${focusedLoc}`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(focusedLoc)}&z=11&output=embed`}
+                    className="h-64 w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <div className="flex items-center justify-between bg-page px-3 py-2">
+                    <span className="text-xs text-ink-2">
+                      Showing <span className="text-ink">{focusedLoc}</span> — click a location above to switch.
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps/search/${encodeURIComponent(focusedLoc)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-ink-2 transition-colors hover:text-ink"
+                    >
+                      Open in Google Maps ↗
+                    </a>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
