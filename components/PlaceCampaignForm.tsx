@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { apiClient } from '@/lib/api-client';
 import type { PlaceOfferBody } from '@/lib/offers';
 
 const IMAGE_MAX = 8 * 1024 * 1024;
@@ -43,7 +44,9 @@ export default function PlaceCampaignForm() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
+  // '' = not done · 'paying' = redirecting to Stripe · 'done' = submitted
+  // (payment deferred, e.g. zero budget or checkout unavailable)
+  const [done, setDone] = useState<'' | 'paying' | 'done'>('');
 
   useEffect(() => {
     let alive = true;
@@ -122,15 +125,43 @@ export default function PlaceCampaignForm() {
       body: JSON.stringify(body),
     });
     const json = await res.json().catch(() => ({}));
-    setLoading(false);
     if (!res.ok) {
+      setLoading(false);
       setError(json.error ?? 'Could not place the campaign.');
       return;
     }
-    setDone(true);
+
+    // Campaign submitted — collect the budget via Stripe Checkout. The offer is
+    // already recorded, so a canceled/failed payment never loses the campaign.
+    const budgetCents = body.budgetCents ?? 0;
+    if (budgetCents > 0) {
+      setDone('paying');
+      const co = await apiClient.checkout(budgetCents, {
+        success_path: '/campaigns?paid=1',
+        cancel_path: '/campaigns?payment=canceled',
+      });
+      if (co.data?.url) {
+        window.location.assign(co.data.url);
+        return; // navigating away to Stripe
+      }
+    }
+    setLoading(false);
+    setDone('done');
   }
 
-  if (done) {
+  if (done === 'paying') {
+    return (
+      <div className="mt-8 max-w-2xl rounded-[16px] border border-line bg-panel p-8">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <h2 className="mt-5 font-serif text-[30px] font-medium text-ink">Campaign submitted — taking you to payment.</h2>
+        <p className="mt-2 text-[16px] text-muted">
+          One moment, we’re opening secure Stripe Checkout to fund your budget…
+        </p>
+      </div>
+    );
+  }
+
+  if (done === 'done') {
     return (
       <div className="mt-8 max-w-2xl rounded-[16px] border border-line bg-panel p-8">
         <div className="flex h-[52px] w-[52px] items-center justify-center rounded-[13px] bg-tint">
@@ -141,22 +172,22 @@ export default function PlaceCampaignForm() {
         <h2 className="mt-5 font-serif text-[30px] font-medium text-ink">Campaign submitted.</h2>
         <p className="mt-2 text-[16px] text-muted">
           Your campaign was sent to {target?.oem_name ?? 'the fleet'} for review. Track its status any time under
-          Placements — you’ll hear back once it’s approved.
+          Campaigns — you’ll hear back once it’s approved.
         </p>
         <div className="mt-6 flex gap-3">
-          <Link href="/campaigns/placements" className="rounded-[11px] bg-accent px-5 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark">
-            View placements
+          <Link href="/campaigns" className="rounded-[11px] bg-accent px-5 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark">
+            View your campaigns
           </Link>
           <button
             onClick={() => {
-              setDone(false);
+              setDone('');
               setName('');
               setCreativeUrl('');
               setMessage('');
             }}
             className="rounded-[11px] border border-line-strong px-5 py-3 text-[15px] text-ink transition-colors hover:border-accent"
           >
-            Place another
+            Start another
           </button>
         </div>
       </div>
@@ -325,9 +356,9 @@ export default function PlaceCampaignForm() {
         <div className="rounded-[16px] bg-tint p-6">
           <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">How it works</div>
           <ol className="mt-4 space-y-3 text-[14px] text-ink">
-            <li><span className="font-semibold">1.</span> Submit your campaign for the Robot.com fleet.</li>
+            <li><span className="font-semibold">1.</span> Submit your campaign and fund the budget with secure Stripe Checkout.</li>
             <li><span className="font-semibold">2.</span> Kovio and the operator review the creative and content.</li>
-            <li><span className="font-semibold">3.</span> Once approved it runs on real robots — track status under Placements.</li>
+            <li><span className="font-semibold">3.</span> Once approved it runs on real robots — track status under Campaigns.</li>
           </ol>
           <p className="mt-4 text-[13px] text-muted">
             More fleets are coming to Kovio soon. For now, campaigns run on the Robot.com fleet.

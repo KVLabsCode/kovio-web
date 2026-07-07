@@ -61,15 +61,16 @@ export default async function InsightsPage({
           Insights.
         </h1>
         <section className="mt-8 rounded-[18px] border border-dashed border-line-strong py-16 text-center">
-          <div className="font-serif text-[30px] text-ink">No campaigns to report on yet</div>
+          <div className="font-serif text-[30px] text-ink">Start a campaign to see the metrics</div>
           <p className="mx-auto mt-2 max-w-[440px] text-[16px] text-muted">
-            Launch your first campaign and Kovio Intelligence will analyze its verified attention here.
+            Once your first campaign runs on the Robot.com fleet, Kovio Intelligence analyzes its
+            verified attention here.
           </p>
           <Link
-            href="/campaigns/new"
+            href="/campaigns/place"
             className="mt-6 inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
           >
-            + Create your first campaign
+            + Start a campaign
           </Link>
         </section>
       </AppShell>

@@ -17,7 +17,7 @@ export default async function Sidebar() {
     // nav tab. See the campaign detail page for the live view.
     const items: RailItem[] = [
       { label: 'Overview', href: '/dashboard', icon: 'overview' },
-      { label: 'Campaigns', href: '/campaigns', icon: 'campaigns', count: dash.data?.total_campaigns },
+      { label: 'Campaigns', href: '/campaigns', icon: 'campaigns' },
       { label: 'Insights', href: '/insights', icon: 'reports' },
       { label: 'Billing', href: '/billing', icon: 'billing' },
     ];

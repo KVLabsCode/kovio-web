@@ -27,9 +27,9 @@ const STEPS: Record<'advertiser' | 'oem', Step[]> = {
     },
     {
       eyebrow: 'Step 2',
-      title: 'Track it under Placements.',
+      title: 'Track it under Campaigns.',
       body: 'Follow each campaign’s status, confirm any date changes the operator proposes, and message them directly on the campaign.',
-      cta: { label: 'View placements →', href: '/campaigns/placements' },
+      cta: { label: 'View your campaigns →', href: '/campaigns' },
     },
     {
       eyebrow: 'Step 3',

@@ -119,10 +119,12 @@ export default function MyPlacements({ offers }: { offers: MyOffer[] }) {
   if (!offers || offers.length === 0) {
     return (
       <div className="mt-8 rounded-[18px] border border-dashed border-line-strong py-16 text-center">
-        <p className="font-serif text-[28px] text-ink">No placements yet</p>
-        <p className="mt-2 text-[16px] text-muted">Submit a campaign to the Robot.com fleet to see it here.</p>
+        <p className="font-serif text-[28px] text-ink">No campaigns yet</p>
+        <p className="mt-2 text-[16px] text-muted">
+          Start a campaign on the Robot.com fleet to see its status and metrics here.
+        </p>
         <Link href="/campaigns/place" className="mt-6 inline-flex rounded-[11px] bg-accent px-6 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark">
-          Place a campaign
+          + Start a campaign
         </Link>
       </div>
     );
