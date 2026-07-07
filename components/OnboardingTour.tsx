@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 type Step = { eyebrow: string; title: string; body: string; cta?: { label: string; href: string } };
 
 // Bump the version to re-show the tour to everyone after a meaningful change.
-const VERSION = 'v1';
+const VERSION = 'v2';
 
 const STEPS: Record<'advertiser' | 'oem', Step[]> = {
   advertiser: [
@@ -22,7 +22,7 @@ const STEPS: Record<'advertiser' | 'oem', Step[]> = {
     {
       eyebrow: 'Step 1',
       title: 'Launch a campaign on Robot.com.',
-      body: 'Name it, drop a creative, pick your dates and budget — it goes to the Robot.com fleet for review and runs on real robots once approved.',
+      body: 'Name it, drop a creative, pick your dates — the price is set upfront by the fleet’s day rate, paid once via Stripe. It runs on real robots once the fleet approves.',
       cta: { label: 'Create a campaign →', href: '/campaigns/place' },
     },
     {

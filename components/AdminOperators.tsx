@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import InviteControl from '@/components/InviteControl';
+import { ViewAsButton } from '@/components/ViewAsControls';
 import { createClient } from '@/lib/supabase/client';
 import OemSettingsForm from '@/components/OemSettingsForm';
 import type { MyOemTerms } from '@/lib/offers';
@@ -56,12 +57,15 @@ export default function AdminOperators({ operators }: { operators: AdminOperator
                   : 'No account associated — assign one from the Users table'}
               </span>
             </div>
-            <button
-              onClick={() => toggle(op.org_id)}
-              className="rounded-md border border-border-soft px-3 py-1.5 text-sm text-ink transition-colors hover:bg-page"
-            >
-              {openId === op.org_id ? 'Close' : 'Edit settings'}
-            </button>
+            <div className="flex items-center gap-2">
+              <ViewAsButton orgId={op.org_id} />
+              <button
+                onClick={() => toggle(op.org_id)}
+                className="rounded-md border border-border-soft px-3 py-1.5 text-sm text-ink transition-colors hover:bg-page"
+              >
+                {openId === op.org_id ? 'Close' : 'Edit settings'}
+              </button>
+            </div>
           </div>
 
           <InviteControl orgId={op.org_id} pendingInvite={op.pending_invite} who="OEM" />

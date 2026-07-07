@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import InviteControl from '@/components/InviteControl';
+import { ViewAsButton } from '@/components/ViewAsControls';
 
 export interface AdminAdvertiserOrg {
   org_id: string;
@@ -77,13 +78,16 @@ export default function AdminAdvertisers({ advertisers }: { advertisers: AdminAd
     <div className="grid gap-3">
       {visible.map((a) => (
         <div key={a.org_id} className="rounded-lg border border-border-soft bg-card p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-ink">{a.name}</span>
-            <span className="truncate text-xs text-ink-2">
-              {a.member_emails.length > 0
-                ? `Accounts: ${a.member_emails.join(', ')}`
-                : 'No account associated yet'}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-ink">{a.name}</span>
+              <span className="truncate text-xs text-ink-2">
+                {a.member_emails.length > 0
+                  ? `Accounts: ${a.member_emails.join(', ')}`
+                  : 'No account associated yet'}
+              </span>
+            </div>
+            <ViewAsButton orgId={a.org_id} />
           </div>
           <InviteControl orgId={a.org_id} pendingInvite={a.pending_invite} who="advertiser" />
         </div>

@@ -18,7 +18,7 @@ export default function PauseResumeButton({ id, status }: { id: string; status: 
       : await apiClient.resumeCampaign(id);
     setLoading(false);
     if (error) {
-      setError(error.code === 'budget_exhausted' ? 'Budget exhausted — top up first.' : error.detail ?? 'Failed.');
+      setError(error.code === 'budget_exhausted' ? 'Campaign budget exhausted.' : error.detail ?? 'Failed.');
       return;
     }
     router.refresh();

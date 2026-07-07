@@ -6,6 +6,7 @@ import { EngagementFunnel } from '@/components/EngagementFunnel';
 import type { Campaign, RecentImpression } from '@/lib/types';
 import AppShell from '@/components/AppShell';
 import OnboardingTour from '@/components/OnboardingTour';
+import { createClient as createSupabase } from '@/lib/supabase/server';
 import RangePills from '@/components/RangePills';
 import LiveActivityHero from '@/components/LiveActivityHero';
 import FleetCountdown from '@/components/FleetCountdown';
@@ -16,21 +17,24 @@ const RANGES = ['24H', '7D', '30D', 'ALL'];
 const GETTING_STARTED = [
   {
     n: '1',
-    title: 'Create your first campaign',
-    desc: 'Pick a name, drop a creative, launch in two minutes.',
+    title: 'Create your campaign',
+    desc: 'Name it, drop a creative, pick your dates — priced upfront by the fleet’s day rate.',
     link: 'Create campaign →',
+    href: '/campaigns/place',
   },
   {
     n: '2',
-    title: 'Watch Hawkeye',
-    desc: 'See live footage of robots running your ad, with verified attention.',
-    link: 'See it live →',
+    title: 'Fleet review & scheduling',
+    desc: 'The operator reviews your creative, can propose new dates, and you can message them directly.',
+    link: 'Track your campaigns →',
+    href: '/campaigns',
   },
   {
     n: '3',
-    title: 'Go paid when ready',
-    desc: 'Set your own budget per campaign after the free trial. Pay only for what runs.',
-    link: 'Learn more →',
+    title: 'Watch it perform',
+    desc: 'Once live, verified attention streams in here — and Kovio Intelligence breaks it down under Insights.',
+    link: 'Open Insights →',
+    href: '/insights',
   },
 ];
 
@@ -182,8 +186,13 @@ export default async function DashboardPage({
   const brand = me.data?.org.name ?? 'there';
   const now = new Date();
 
-  // ---- Trial / empty state (API-driven, kept) ----
+  // ---- Onboarding / empty state (no engine campaigns yet) ----
   if (campaigns.length === 0) {
+    // Placement-based campaigns (Robot.com offers) live in Supabase — a user
+    // who has already placed one should see "in review", not a cold start.
+    const supabase = await createSupabase();
+    const { data: offerRows } = await supabase.rpc('kovio_my_offers');
+    const placements = Array.isArray(offerRows) ? offerRows.length : 0;
     return (
       <AppShell page="Overview" action={newCampaignBtn}>
         <OnboardingTour role="advertiser" />
@@ -195,9 +204,17 @@ export default async function DashboardPage({
           {greeting(now)}, <em className="italic text-accent-dark">{brand}.</em>
         </h1>
         <p className="mt-3 max-w-[640px] text-[18px] leading-[1.5] text-muted">
-          Your free trial covers{' '}
-          <span className="text-ink">one full campaign</span>{' '}
-          on a live citywide robot fleet. No card needed, let&apos;s get it running.
+          {placements > 0 ? (
+            <>
+              Your campaign is with the <span className="text-ink">Robot.com fleet</span> for review —
+              verified metrics stream in here the moment it goes live.
+            </>
+          ) : (
+            <>
+              Put your brand on the <span className="text-ink">Robot.com fleet</span> — real robots on
+              real streets, priced upfront, with every look verified on-device.
+            </>
+          )}
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-4 lg:mt-7 lg:grid-cols-[1.7fr_1fr]">
@@ -214,7 +231,7 @@ export default async function DashboardPage({
                 <div>
                   <div className="text-[17px] font-semibold text-ink sm:text-[18px]">{step.title}</div>
                   <div className="mt-0.5 text-[15px] leading-[1.4] text-muted sm:text-[16px]">{step.desc}</div>
-                  <Link href="/campaigns/new" className="mt-1 inline-block text-[15px] text-accent-dark hover:text-accent sm:text-[16px]">
+                  <Link href={step.href} className="mt-1 inline-block text-[15px] text-accent-dark hover:text-accent sm:text-[16px]">
                     {step.link}
                   </Link>
                 </div>
@@ -222,25 +239,47 @@ export default async function DashboardPage({
             ))}
           </section>
 
-          {/* Plan card */}
-          <section className="flex flex-col rounded-[18px] border border-tint-line bg-tint px-5 py-5 sm:px-7 sm:py-6">
-            <div className="flex items-start justify-between">
-              <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">Your plan</div>
-              <span className="rounded-[20px] bg-panel px-2.5 py-1 font-mono text-[11px] text-accent-dark">FREE TRIAL</span>
-            </div>
-            <div className="mt-4 font-serif text-[32px] leading-[1.04] text-ink sm:text-[40px]">
-              Your first campaign, free
-            </div>
-            <p className="mb-auto mt-3 text-[15px] text-muted">
-              Launch the default citywide setup. No card needed until you go paid.
-            </p>
-            <Link
-              href="/campaigns/new"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
-            >
-              + Launch free campaign
-            </Link>
-          </section>
+          {/* Status / model card */}
+          {placements > 0 ? (
+            <section className="flex flex-col rounded-[18px] border border-tint-line bg-tint px-5 py-5 sm:px-7 sm:py-6">
+              <div className="flex items-start justify-between">
+                <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">Your campaigns</div>
+                <span className="rounded-[20px] bg-panel px-2.5 py-1 font-mono text-[11px] text-accent-dark">IN REVIEW</span>
+              </div>
+              <div className="mt-4 font-serif text-[32px] leading-[1.04] text-ink sm:text-[40px]">
+                {placements} campaign{placements === 1 ? '' : 's'} with the fleet
+              </div>
+              <p className="mb-auto mt-3 text-[15px] text-muted">
+                Track review status, confirm date changes and message the operator from Campaigns.
+              </p>
+              <Link
+                href="/campaigns"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+              >
+                View your campaigns
+              </Link>
+            </section>
+          ) : (
+            <section className="flex flex-col rounded-[18px] border border-tint-line bg-tint px-5 py-5 sm:px-7 sm:py-6">
+              <div className="flex items-start justify-between">
+                <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-dark">How pricing works</div>
+                <span className="rounded-[20px] bg-panel px-2.5 py-1 font-mono text-[11px] text-accent-dark">PAY PER CAMPAIGN</span>
+              </div>
+              <div className="mt-4 font-serif text-[32px] leading-[1.04] text-ink sm:text-[40px]">
+                One set price, upfront
+              </div>
+              <p className="mb-auto mt-3 text-[15px] text-muted">
+                The fleet’s day rate × your dates — shown before you submit, charged once via Stripe. No
+                budgets to manage, no surprises.
+              </p>
+              <Link
+                href="/campaigns/place"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-[11px] bg-accent py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+              >
+                + Launch a campaign
+              </Link>
+            </section>
+          )}
         </div>
       </AppShell>
     );

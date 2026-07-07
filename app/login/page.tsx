@@ -156,7 +156,7 @@ export default function LoginPage() {
             <>
               {isSignup && (
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-tint px-[13px] py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-accent-dark">
-                  ★ First campaign free · no card
+                  ★ Live on real robots · priced upfront
                 </div>
               )}
               <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">
@@ -167,7 +167,7 @@ export default function LoginPage() {
               </h2>
               <p className="mt-2 text-[16px] text-muted">
                 {isSignup
-                  ? 'Start with your first campaign free. No card required.'
+                  ? 'Launch your brand on the Robot.com fleet in minutes.'
                   : 'Sign in to manage your campaigns.'}
               </p>
 
@@ -206,7 +206,7 @@ export default function LoginPage() {
                   disabled={loading}
                   className="mt-3 w-full rounded-[11px] bg-accent py-[14px] text-[15px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
                 >
-                  {loading ? 'Sending…' : isSignup ? 'Start free trial →' : 'Send magic link'}
+                  {loading ? 'Sending…' : isSignup ? 'Create account →' : 'Send magic link'}
                 </button>
                 {error && <p className="mt-3 text-sm text-danger">{error}</p>}
               </form>

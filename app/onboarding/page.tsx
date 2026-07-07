@@ -28,10 +28,10 @@ const VALUE_PROPS: Array<{ title: string; body: string }> = [
 ];
 
 const INCLUDED: Array<React.ReactNode> = [
-  <><span className="font-semibold text-ink">One full campaign</span> on a live citywide robot fleet.</>,
-  <><span className="font-semibold text-ink">Hawkeye live footage</span> &amp; verified attention data.</>,
-  <>Full reporting with <span className="font-semibold text-ink">AI analysis</span>.</>,
-  <>No credit card. Add one only when you go paid.</>,
+  <>Campaigns on the <span className="font-semibold text-ink">Robot.com fleet</span> — real robots on real streets.</>,
+  <><span className="font-semibold text-ink">Verified attention</span>, measured frame-by-frame on the robot.</>,
+  <>Full reporting with <span className="font-semibold text-ink">AI analysis</span> under Insights.</>,
+  <><span className="font-semibold text-ink">Upfront pricing</span> — the fleet’s day rate × your dates, paid once via Stripe.</>,
 ];
 
 export default function OnboardingPage() {
@@ -79,11 +79,11 @@ export default function OnboardingPage() {
       </div>
 
       <div className="mx-auto max-w-[1080px] px-9 pb-20 pt-9">
-        {/* free trial badge — fixed-dark surface */}
+        {/* network badge — fixed-dark surface */}
         <div className="inline-flex items-center gap-[9px] rounded-full bg-[#332c24] px-4 py-2 text-[#f1ead9]">
           <span className="k-pulse h-[7px] w-[7px] rounded-full bg-[#5cbe85]" />
           <span className="font-mono text-[12px] uppercase tracking-[0.1em]">
-            Free trial · your first campaign is on us
+            Network online · Robot.com fleet
           </span>
         </div>
 
@@ -133,19 +133,19 @@ export default function OnboardingPage() {
                 disabled={loading || !brand.trim()}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[12px] bg-accent py-[17px] text-[17px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
               >
-                {loading ? 'Setting up…' : 'Start free trial →'}
+                {loading ? 'Setting up…' : 'Create my workspace →'}
               </button>
               {error && <p className="mt-3 text-sm text-danger">{error}</p>}
             </form>
             <p className="mt-4 text-[15px] text-muted">
-              Your first campaign is on us. <span className="font-semibold text-ink">No card needed to launch.</span>
+              Setting up is free. <span className="font-semibold text-ink">You only pay when you launch a campaign.</span>
             </p>
           </div>
 
           {/* trial summary card */}
           <div className="rounded-[18px] border border-tint-line bg-tint p-[26px]">
             <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent-dark">
-              What&apos;s included free
+              What you get
             </div>
             <div className="mt-4 flex flex-col gap-[14px]">
               {INCLUDED.map((node, i) => (
@@ -156,9 +156,8 @@ export default function OnboardingPage() {
               ))}
             </div>
             <div className="mt-5 border-t border-tint-line pt-[18px] text-[13px] text-muted">
-              After your free campaign, it&apos;s simple{' '}
-              <span className="font-semibold text-ink">pay-per-campaign</span>, billed to your card
-              only as campaigns run.
+              Simple <span className="font-semibold text-ink">pay-per-campaign</span> pricing — the set
+              price is shown before you submit, charged once via Stripe.
             </div>
           </div>
         </div>

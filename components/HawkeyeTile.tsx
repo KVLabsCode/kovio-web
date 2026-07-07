@@ -405,7 +405,7 @@ export function CampaignPauseButton({ id, status }: { id: string; status: string
     if (err) {
       setError(
         err.code === 'budget_exhausted'
-          ? 'Budget exhausted — top up first.'
+          ? 'Campaign budget exhausted.'
           : err.detail ?? 'Failed.',
       );
       return;

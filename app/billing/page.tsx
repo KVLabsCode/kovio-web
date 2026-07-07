@@ -72,8 +72,8 @@ export default async function BillingPage() {
             Pay per campaign.
           </div>
           <div className="mt-2.5 text-[14px] leading-[1.5] text-muted">
-            No balance to top up beyond a campaign. Each campaign is funded at launch via Stripe and
-            billed as it spends; you only pay for verified interactions that run.
+            Each campaign is priced upfront — the fleet’s rate × your dates — and paid once via
+            Stripe when you submit. No balances to manage, no surprise charges.
           </div>
         </div>
         <div className="rounded-[18px] border border-line bg-panel p-6">
@@ -82,9 +82,9 @@ export default async function BillingPage() {
           <div className="mt-2 text-[13px] text-muted">across {activeCount} active campaign{activeCount === 1 ? '' : 's'}</div>
         </div>
         <div className="rounded-[18px] border border-line bg-panel p-6">
-          <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-faint">Balance</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-faint">Credit</div>
           <div className="mt-2.5 font-mono text-[34px] tracking-[-0.01em] text-ink">{formatMoney(balance)}</div>
-          <div className="mt-2 text-[13px] text-muted">funded, available across campaigns</div>
+          <div className="mt-2 text-[13px] text-muted">payments received, applied to your campaigns</div>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default async function BillingPage() {
           <div>
             <div className="text-[15px] font-semibold text-ink">Secured by Stripe</div>
             <div className="text-[13px] text-faint">
-              You’re charged when you launch a campaign. No saved card or balance top-up to manage.
+              You’re charged the set price when you submit a campaign. No saved card or top-ups to manage.
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default async function BillingPage() {
           </div>
           {charges.length === 0 ? (
             <div className="px-6 py-12 text-center text-[14px] text-faint">
-              No charges yet. Your first campaign is on us.
+              No charges yet — your payments and invoices will appear here.
             </div>
           ) : (
             charges.map((c) => (

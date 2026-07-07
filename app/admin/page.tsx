@@ -4,6 +4,7 @@ import { KovioMark } from '@/components/KovioMark';
 import AdminOffers, { type AdminOffer } from '@/components/AdminOffers';
 import AdminOperators, { type AdminOperator } from '@/components/AdminOperators';
 import AdminAdvertisers, { NewOrgControl, type AdminAdvertiserOrg } from '@/components/AdminAdvertisers';
+import { ViewingBanner } from '@/components/ViewAsControls';
 import AdminUsers, { type AdminUserRow, type AdminOrg } from '@/components/AdminUsers';
 import AdminAdmins from '@/components/AdminAdmins';
 import { usd } from '@/lib/offers';
@@ -66,7 +67,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes, advsRes] = await Promise.all([
+  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes, advsRes, viewingRes] = await Promise.all([
     supabase.rpc('kovio_admin_overview'),
     supabase.rpc('kovio_admin_users'),
     supabase.rpc('kovio_admin_campaigns'),
@@ -75,6 +76,7 @@ export default async function AdminPage() {
     supabase.rpc('kovio_admin_list_admins'),
     supabase.rpc('kovio_admin_orgs'),
     supabase.rpc('kovio_admin_advertisers'),
+    supabase.rpc('kovio_admin_viewing'),
   ]);
 
   const ov = (Array.isArray(ovRes.data) ? ovRes.data[0] : ovRes.data) as Overview | undefined;
@@ -85,6 +87,8 @@ export default async function AdminPage() {
   const admins = ((adminsRes.data as { email: string }[]) ?? []).map((a) => a.email);
   const orgs = (orgsRes.data as AdminOrg[]) ?? [];
   const advertiserOrgs = (advsRes.data as AdminAdvertiserOrg[]) ?? [];
+  const viewingRow = Array.isArray(viewingRes.data) ? viewingRes.data[0] : viewingRes.data;
+  const viewing = (viewingRow as { org_name: string; kind: string } | undefined) ?? null;
 
   return (
     <div className="min-h-screen bg-bg text-ink">
@@ -102,6 +106,8 @@ export default async function AdminPage() {
       <main className="mx-auto max-w-[1200px] px-6 py-8">
         <h1 className="font-serif text-h1 text-ink">Control room.</h1>
         <p className="mt-1 text-ink-2">Everything happening across Kovio.</p>
+
+        {viewing && <ViewingBanner orgName={viewing.org_name} kind={viewing.kind} />}
 
         {/* Overview */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">

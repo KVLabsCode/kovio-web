@@ -42,18 +42,21 @@ export default async function InsightsPage({
   const monthLabel = now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   const generated = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  const action = (
+  // No campaigns OR no verified data yet → no insights: an empty report with
+  // zeroed charts reads as broken, not professional.
+  const totalImpressions = campaigns.reduce((s, c) => s + (c.impressions_total ?? 0), 0);
+  const hasData = campaigns.length > 0 && totalImpressions > 0;
+
+  const action = hasData ? (
     <>
-      {campaigns.length > 0 && (
-        <CampaignPicker campaigns={campaigns.map((c) => ({ id: c.id, name: c.name }))} />
-      )}
+      <CampaignPicker campaigns={campaigns.map((c) => ({ id: c.id, name: c.name }))} />
       <ExportPdfButton />
     </>
-  );
+  ) : undefined;
 
-  if (campaigns.length === 0) {
+  if (!hasData) {
     return (
-      <AppShell page="Insights" action={action}>
+      <AppShell page="Insights">
         <div className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
           Hawkeye · insights · {monthLabel}
         </div>
@@ -61,17 +64,22 @@ export default async function InsightsPage({
           Insights.
         </h1>
         <section className="mt-8 rounded-[18px] border border-dashed border-line-strong py-16 text-center">
-          <div className="font-serif text-[30px] text-ink">Start a campaign to see the metrics</div>
+          <div className="font-serif text-[30px] text-ink">
+            {campaigns.length === 0 ? 'Start a campaign to see the metrics' : 'No verified data yet'}
+          </div>
           <p className="mx-auto mt-2 max-w-[440px] text-[16px] text-muted">
-            Once your first campaign runs on the Robot.com fleet, Kovio Intelligence analyzes its
-            verified attention here.
+            {campaigns.length === 0
+              ? 'Once your first campaign runs on the Robot.com fleet, Kovio Intelligence analyzes its verified attention here.'
+              : 'Your campaign hasn’t served yet. Insights appear as soon as robots start logging verified attention.'}
           </p>
-          <Link
-            href="/campaigns/place"
-            className="mt-6 inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
-          >
-            + Start a campaign
-          </Link>
+          {campaigns.length === 0 && (
+            <Link
+              href="/campaigns/place"
+              className="mt-6 inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+            >
+              + Start a campaign
+            </Link>
+          )}
         </section>
       </AppShell>
     );
