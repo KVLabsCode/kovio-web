@@ -46,10 +46,12 @@ export function EngagementFunnel({ summary }: { summary: AudienceSummary }) {
             <div className="w-24 shrink-0 font-mono text-[11px] uppercase tracking-wide opacity-70">
               {s.label}
             </div>
-            <div className="h-2 flex-1 rounded-full" style={{ background: track }}>
+            <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: track }}>
+              {/* Clamp: interaction counts (gestures) can legitimately exceed the
+                  passed-by anchor — the bar caps at 100%, the number tells the truth. */}
               <div
                 className="h-2 rounded-full"
-                style={{ width: `${Math.max(2, (s.value / max) * 100)}%`, background: s.color }}
+                style={{ width: `${Math.min(100, Math.max(2, (s.value / max) * 100))}%`, background: s.color }}
               />
             </div>
             <div className="w-14 shrink-0 text-right font-mono text-[13px]">

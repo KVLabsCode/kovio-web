@@ -159,7 +159,7 @@ function CampaignBlock({ c }: { c: ShowcaseCampaign }) {
                 <div key={f.label} className="flex items-center gap-3">
                   <span className={`${mono} w-[74px] shrink-0 text-[9px] text-muted`}>{f.label}</span>
                   <div className="h-[20px] flex-1 overflow-hidden rounded-[5px] bg-panel">
-                    <div className="h-full rounded-[5px] bg-accent" style={{ width: `${Math.max(2, f.pct)}%` }} />
+                    <div className="h-full rounded-[5px] bg-accent" style={{ width: `${Math.min(100, Math.max(2, f.pct))}%` }} />
                   </div>
                   <span className="w-[92px] shrink-0 text-right text-[12px] text-muted">
                     <span className="font-semibold text-ink">{compact(f.v)}</span> {f.pct.toFixed(1)}%

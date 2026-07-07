@@ -148,7 +148,7 @@ export default async function CampaignReportPage({
                 <div className="h-[30px] rounded-[7px] bg-tint overflow-hidden mt-2">
                   <div
                     className="h-full bg-accent flex items-center"
-                    style={{ width: stage.width * 100 + '%' }}
+                    style={{ width: Math.min(100, stage.width * 100) + '%' }}
                   >
                     <span className="pl-2.5 font-mono text-[10px] text-white">{stage.sub}</span>
                   </div>
@@ -254,7 +254,7 @@ export default async function CampaignReportPage({
                 <span className="text-[17px] font-semibold text-ink">{bucket.pct}%</span>
               </div>
               <div className="h-3.5 rounded-[7px] bg-tint mt-2 overflow-hidden">
-                <div className="h-full bg-accent" style={{ width: bucket.pct + '%' }} />
+                <div className="h-full bg-accent" style={{ width: Math.min(100, bucket.pct) + '%' }} />
               </div>
             </div>
           ))}

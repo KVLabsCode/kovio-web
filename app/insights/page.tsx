@@ -333,7 +333,7 @@ function FunnelRow({
         <span className="font-mono text-muted">{value}</span>
       </div>
       <div className="h-7 overflow-hidden rounded-[7px] bg-panel-2">
-        <div className={`h-full ${color}`} style={{ width: `${width}%` }} />
+        <div className={`h-full ${color}`} style={{ width: `${Math.min(100, Math.max(0, width))}%` }} />
       </div>
     </div>
   );
