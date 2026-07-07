@@ -17,11 +17,12 @@ const inputCls =
 // Manage a prospect advertiser's showcase campaigns: footage (YouTube link or
 // uploaded video) + processed interaction metrics. These render on the claim
 // page as the "results" that invite the advertiser to claim the account.
-export default function AdminShowcase({ orgId }: { orgId: string }) {
+export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: string; defaultOpen?: boolean }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [items, setItems] = useState<ShowcaseCampaign[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadedOnce, setLoadedOnce] = useState(false);
 
   const [name, setName] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -40,6 +41,12 @@ export default function AdminShowcase({ orgId }: { orgId: string }) {
     const { data } = await supabase.rpc('kovio_admin_showcases', { p_org_id: orgId });
     setItems((data as ShowcaseCampaign[]) ?? []);
     setLoading(false);
+  }
+
+  // Standalone builder page opens (and loads) immediately.
+  if (defaultOpen && !loadedOnce) {
+    setLoadedOnce(true);
+    void load();
   }
 
   function toggle() {
@@ -112,9 +119,11 @@ export default function AdminShowcase({ orgId }: { orgId: string }) {
 
   return (
     <div className="mt-2">
-      <button onClick={toggle} className="text-sm text-rust transition-colors hover:text-rust-dark">
-        {open ? 'Hide showcase campaigns ▴' : 'Showcase campaigns ▾'}
-      </button>
+      {!defaultOpen && (
+        <button onClick={toggle} className="text-sm text-rust transition-colors hover:text-rust-dark">
+          {open ? 'Hide showcase campaigns ▴' : 'Showcase campaigns ▾'}
+        </button>
+      )}
 
       {open && (
         <div className="mt-2 rounded-lg border border-border-soft bg-page p-4">

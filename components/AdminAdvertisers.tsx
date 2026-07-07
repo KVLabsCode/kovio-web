@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import InviteControl from '@/components/InviteControl';
-import AdminShowcase from '@/components/AdminShowcase';
 import { ViewAsButton } from '@/components/ViewAsControls';
 
 export interface AdminAdvertiserOrg {
@@ -84,14 +83,22 @@ export default function AdminAdvertisers({ advertisers }: { advertisers: AdminAd
               <span className="text-sm font-medium text-ink">{a.name}</span>
               <span className="truncate text-xs text-ink-2">
                 {a.member_emails.length > 0
-                  ? `Accounts: ${a.member_emails.join(', ')}`
-                  : 'No account associated yet'}
+                  ? `Claimed by ${a.member_emails.join(', ')}`
+                  : a.pending_invite
+                    ? `Claim link pending (${a.pending_invite})`
+                    : 'Not claimed yet'}
               </span>
             </div>
-            <ViewAsButton orgId={a.org_id} />
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/admin/advertisers/${a.org_id}`}
+                className="rounded-md bg-rust px-3 py-1.5 text-sm text-page transition-colors hover:bg-rust-dark"
+              >
+                Showcase &amp; claim →
+              </Link>
+              <ViewAsButton orgId={a.org_id} />
+            </div>
           </div>
-          <AdminShowcase orgId={a.org_id} />
-          <InviteControl orgId={a.org_id} pendingInvite={a.pending_invite} who="advertiser" />
         </div>
       ))}
       {advertisers.length > 8 && (

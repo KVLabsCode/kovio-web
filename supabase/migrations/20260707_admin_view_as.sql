@@ -63,3 +63,16 @@ begin
    where s.admin_email = lower(public._kovio_caller_email());
 end; $$;
 grant execute on function public.kovio_admin_viewing() to authenticated;
+
+-- Probed on every shell render for the return pill — silent for non-admins.
+create or replace function public.kovio_admin_viewing()
+returns table (org_name text, kind text)
+language plpgsql security definer set search_path = public stable as $$
+begin
+  if not public.kovio_is_admin() then return; end if;
+  return query select o.name::text, o.kind::text
+    from public.admin_view_state s
+    join public.organizations o on o.id = s.viewing_org_id
+   where s.admin_email = lower(public._kovio_caller_email());
+end; $$;
+grant execute on function public.kovio_admin_viewing() to authenticated;
