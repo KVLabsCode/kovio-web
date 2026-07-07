@@ -7,6 +7,7 @@ import { KovioMark } from '@/components/KovioMark';
 
 interface ClaimInfo {
   org_name: string | null;
+  org_kind: string | null;
   invited_email_hint: string | null;
   valid: boolean;
   reason: string;
@@ -37,7 +38,7 @@ export default function ClaimClient({ token }: { token: string }) {
       ]);
       if (!alive) return;
       const row = Array.isArray(infoRows) ? infoRows[0] : infoRows;
-      setInfo((row as ClaimInfo) ?? { org_name: null, invited_email_hint: null, valid: false, reason: 'not_found' });
+      setInfo((row as ClaimInfo) ?? { org_name: null, org_kind: null, invited_email_hint: null, valid: false, reason: 'not_found' });
       setSessionEmail(userData.user?.email ?? null);
       setLoadingInfo(false);
     })();
@@ -67,7 +68,7 @@ export default function ClaimClient({ token }: { token: string }) {
     setBusy(true);
     setError('');
     const supabase = createClient();
-    const { error } = await supabase.rpc('kovio_claim_org', { p_token: token });
+    const { data, error } = await supabase.rpc('kovio_claim_org', { p_token: token });
     setBusy(false);
     if (error) {
       const msg = error.message || '';
@@ -78,11 +79,17 @@ export default function ClaimClient({ token }: { token: string }) {
       else setError('Could not claim the account. Please try again.');
       return;
     }
-    router.push('/oem/dashboard');
+    // Land in the right home for the claimed org kind.
+    const claimed = Array.isArray(data) ? data[0] : data;
+    router.push(claimed?.kind === 'advertiser' ? '/dashboard' : '/oem/dashboard');
     router.refresh();
   }
 
-  const orgName = info?.org_name ?? 'your fleet';
+  const orgName = info?.org_name ?? 'your organization';
+  const isAdv = info?.org_kind === 'advertiser';
+  const perks = isAdv
+    ? 'campaigns on real robots, live insights and billing'
+    : 'campaign inbox, pricing, schedule and earnings';
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 text-ink">
@@ -90,7 +97,7 @@ export default function ClaimClient({ token }: { token: string }) {
         <div className="flex items-center gap-[11px]">
           <KovioMark className="h-6 w-6 text-accent" />
           <span className="font-mono text-[15px] tracking-[0.18em]">KOVIO</span>
-          <span className="font-mono text-[11px] tracking-[0.14em] text-faint">/ FLEETS</span>
+          <span className="font-mono text-[11px] tracking-[0.14em] text-faint">{isAdv ? '/ ADVERTISERS' : '/ FLEETS'}</span>
         </div>
 
         {loadingInfo ? (
@@ -109,7 +116,7 @@ export default function ClaimClient({ token }: { token: string }) {
         ) : (
           <>
             <div className="mt-8 inline-flex items-center gap-2 rounded-full bg-tint px-[13px] py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-accent-dark">
-              ★ Operator invite
+              ★ {isAdv ? 'Advertiser' : 'Operator'} invite
             </div>
             <h1 className="mt-3 font-serif text-[34px] font-medium leading-[1.08] tracking-[-0.015em]">
               Claim <em className="italic text-accent">{orgName}</em> on Kovio.
@@ -118,13 +125,13 @@ export default function ClaimClient({ token }: { token: string }) {
               {info.invited_email_hint ? (
                 <>
                   This invite is for <span className="font-medium text-ink">{info.invited_email_hint}</span>. Sign in
-                  with that email and the {orgName} operator account — campaign inbox, pricing, schedule and
-                  earnings — is yours.
+                  with that email and the {orgName} {isAdv ? 'advertiser' : 'operator'} account — {perks} — is
+                  yours.
                 </>
               ) : (
                 <>
-                  Sign in with your work email and the {orgName} operator account — campaign inbox, pricing,
-                  schedule and earnings — is yours.
+                  Sign in with your work email and the {orgName} {isAdv ? 'advertiser' : 'operator'} account —{' '}
+                  {perks} — is yours.
                 </>
               )}
             </p>

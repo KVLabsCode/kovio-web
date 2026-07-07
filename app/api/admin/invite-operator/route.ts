@@ -47,23 +47,27 @@ export async function POST(request: Request): Promise<Response> {
 
   const row = Array.isArray(data) ? data[0] : data;
   const token: string | undefined = row?.token;
-  const orgName: string = row?.org_name ?? 'your fleet';
+  const orgName: string = row?.org_name ?? 'your organization';
+  const orgKind: string = row?.org_kind ?? 'oem';
   if (!token) return Response.json({ error: 'Could not create the invite.' }, { status: 500 });
 
   const claimUrl = `${origin(request)}/claim/${token}`;
 
   let emailed = false;
   if (body.send && email) {
+    const isAdv = orgKind === 'advertiser';
     const sent = await sendEmail({
       to: email,
       subject: `Claim your ${orgName} account on Kovio`,
       html: emailShell({
         heading: `Your ${orgName} account is ready.`,
         bodyHtml:
-          `Kovio set up the <strong>${orgName}</strong> fleet-operator account for you. ` +
+          `Kovio set up the <strong>${orgName}</strong> ${isAdv ? 'advertiser' : 'fleet-operator'} account for you. ` +
           `Claim it with this link — sign in with <strong>this email address</strong> and you’re in: ` +
-          `campaign inbox, pricing and schedule settings, and earnings.<br/><br/>` +
-          `The link expires in 14 days and only works for this email.`,
+          (isAdv
+            ? `campaigns on real robots, live insights, and billing.`
+            : `campaign inbox, pricing and schedule settings, and earnings.`) +
+          `<br/><br/>The link expires in 14 days and only works for this email.`,
         cta: { label: `Claim ${orgName} →`, url: claimUrl },
       }),
     });

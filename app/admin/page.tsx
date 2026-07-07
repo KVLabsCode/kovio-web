@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { KovioMark } from '@/components/KovioMark';
 import AdminOffers, { type AdminOffer } from '@/components/AdminOffers';
 import AdminOperators, { type AdminOperator } from '@/components/AdminOperators';
+import AdminAdvertisers, { NewOrgControl, type AdminAdvertiserOrg } from '@/components/AdminAdvertisers';
 import AdminUsers, { type AdminUserRow, type AdminOrg } from '@/components/AdminUsers';
 import AdminAdmins from '@/components/AdminAdmins';
 import { usd } from '@/lib/offers';
@@ -65,7 +66,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes] = await Promise.all([
+  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes, advsRes] = await Promise.all([
     supabase.rpc('kovio_admin_overview'),
     supabase.rpc('kovio_admin_users'),
     supabase.rpc('kovio_admin_campaigns'),
@@ -73,6 +74,7 @@ export default async function AdminPage() {
     supabase.rpc('kovio_admin_operators'),
     supabase.rpc('kovio_admin_list_admins'),
     supabase.rpc('kovio_admin_orgs'),
+    supabase.rpc('kovio_admin_advertisers'),
   ]);
 
   const ov = (Array.isArray(ovRes.data) ? ovRes.data[0] : ovRes.data) as Overview | undefined;
@@ -82,6 +84,7 @@ export default async function AdminPage() {
   const operators = (opsRes.data as AdminOperator[]) ?? [];
   const admins = ((adminsRes.data as { email: string }[]) ?? []).map((a) => a.email);
   const orgs = (orgsRes.data as AdminOrg[]) ?? [];
+  const advertiserOrgs = (advsRes.data as AdminAdvertiserOrg[]) ?? [];
 
   return (
     <div className="min-h-screen bg-bg text-ink">
@@ -122,11 +125,28 @@ export default async function AdminPage() {
 
         {/* Fleet operators + their settings */}
         <section className="mt-10">
-          <h2 className="mb-3 font-serif text-h2 text-ink">Fleet operators <span className="text-ink-3">({operators.length})</span></h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-serif text-h2 text-ink">Fleet operators <span className="text-ink-3">({operators.length})</span></h2>
+            <NewOrgControl kind="oem" label="+ New operator" />
+          </div>
           <p className="mb-4 text-sm text-ink-2">
-            Who’s accepting custom campaigns, and full edit access to each operator’s campaign settings.
+            Who’s accepting custom campaigns, full edit access to each operator’s settings, and claim links
+            to hand accounts over.
           </p>
           <AdminOperators operators={operators} />
+        </section>
+
+        {/* Advertisers + claim links */}
+        <section className="mt-10">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-serif text-h2 text-ink">Advertisers <span className="text-ink-3">({advertiserOrgs.length})</span></h2>
+            <NewOrgControl kind="advertiser" label="+ New advertiser" />
+          </div>
+          <p className="mb-4 text-sm text-ink-2">
+            Set up a brand (e.g. Pylon) and hand it over with a claim link — they sign in and get the
+            advertiser dashboard ready to go.
+          </p>
+          <AdminAdvertisers advertisers={advertiserOrgs} />
         </section>
 
         {/* Admin allowlist */}
