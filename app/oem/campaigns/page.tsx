@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
+import { createClient } from '@/lib/supabase/server';
 import AppShell from '@/components/AppShell';
 import { SectionHeader } from '@/components/SectionHeader';
 import CopyLinkButton from '@/components/CopyLinkButton';
+import IncomingOffers from '@/components/IncomingOffers';
+import type { IncomingOffer } from '@/lib/offers';
 
 const btnRust =
   'inline-flex items-center rounded-md bg-rust px-4 py-2.5 text-sm text-page transition-colors duration-200 hover:bg-rust-dark';
@@ -24,12 +27,23 @@ export default async function OemCampaignsPage() {
 
   const campaigns = data.displays;
 
+  // Incoming custom-campaign offers from advertisers (approval inbox). Read via
+  // the SECURITY DEFINER RPC as the logged-in OEM; scoped to their org.
+  const supabase = await createClient();
+  const { data: offerRows } = await supabase.rpc('kovio_oem_offers');
+  const offers = (offerRows as IncomingOffer[]) ?? [];
+  const pendingCount = offers.filter((o) => o.status === 'pending').length;
+
   return (
     <AppShell>
       <SectionHeader
         label="CAMPAIGNS"
         greeting="Custom campaigns."
-        subtitle="Run your own advertisers’ creative on your robots, and point any screen at the link."
+        subtitle={
+          pendingCount > 0
+            ? `You have ${pendingCount} custom campaign${pendingCount === 1 ? '' : 's'} awaiting review.`
+            : 'Run your own advertisers’ creative on your robots, and point any screen at the link.'
+        }
         rightActions={
           <Link href="/oem/campaigns/new" className={btnRust}>
             + New campaign
@@ -38,6 +52,10 @@ export default async function OemCampaignsPage() {
       />
 
       <div className="mt-8">
+        <IncomingOffers offers={offers} />
+        {offers.length > 0 && (
+          <h2 className="mb-4 font-serif text-h2 text-ink">Your displays</h2>
+        )}
         {campaigns.length === 0 ? (
           <div className="rounded-lg border border-border-soft bg-card p-10 text-center">
             <h3 className="font-serif text-h2 text-ink">No campaigns yet</h3>
