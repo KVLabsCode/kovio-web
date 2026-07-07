@@ -32,6 +32,9 @@ export default function ClaimClient({ token }: { token: string }) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Set when the claim succeeds on a showcase page: reveal the results in
+  // place (unblur) and switch the bar to "Go to your dashboard".
+  const [claimedKind, setClaimedKind] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -95,7 +98,20 @@ export default function ClaimClient({ token }: { token: string }) {
     // Claim complete — the intent cookie has done its job.
     document.cookie = 'kovio_claim_token=; path=/; max-age=0';
     const claimed = Array.isArray(data) ? data[0] : data;
-    router.push(claimed?.kind === 'advertiser' ? '/dashboard' : '/oem/dashboard');
+    const kind = claimed?.kind === 'advertiser' ? 'advertiser' : 'oem';
+    if (showcases.length > 0) {
+      // The payoff moment: unblur the results right here; they head to the
+      // dashboard when they're ready via the bar's button.
+      setClaimedKind(kind);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    router.push(kind === 'advertiser' ? '/dashboard' : '/oem/dashboard');
+    router.refresh();
+  }
+
+  function goToDashboard() {
+    router.push(claimedKind === 'advertiser' ? '/dashboard' : '/oem/dashboard');
     router.refresh();
   }
 
@@ -155,15 +171,28 @@ export default function ClaimClient({ token }: { token: string }) {
     return (
       <div className="min-h-screen bg-bg text-ink">
         <div className="mx-auto max-w-[900px] px-5 pb-36 pt-10 sm:px-8">
-          {/* Blurred until claimed — claiming redirects to their dashboard,
-              where the full report renders sharp. */}
-          <ShowcaseResults orgName={orgName} campaigns={showcases} locked />
+          {/* Blurred until claimed — the moment they claim, the report unblurs
+              right here and the bar flips to "Go to your dashboard". */}
+          <ShowcaseResults orgName={orgName} campaigns={showcases} locked={!claimedKind} />
         </div>
 
         {/* sticky claim bar */}
         <div id="claim-bar" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 backdrop-blur">
           <div className="mx-auto max-w-[900px] px-5 py-3.5 sm:px-8">
-            {sessionEmail ? (
+            {claimedKind ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[15px] text-ink">
+                  <span className="font-semibold text-good">✓ {orgName} is yours.</span>{' '}
+                  <span className="text-muted">Results unlocked — this is what your brand did on real robots.</span>
+                </p>
+                <button
+                  onClick={goToDashboard}
+                  className="rounded-[11px] bg-accent px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent-dark"
+                >
+                  Go to your dashboard →
+                </button>
+              </div>
+            ) : sessionEmail ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-[14px] text-muted">
                   Signed in as <span className="font-medium text-ink">{sessionEmail}</span> — everything above
