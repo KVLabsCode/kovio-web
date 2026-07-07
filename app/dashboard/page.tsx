@@ -6,7 +6,9 @@ import { EngagementFunnel } from '@/components/EngagementFunnel';
 import type { Campaign, RecentImpression } from '@/lib/types';
 import AppShell from '@/components/AppShell';
 import OnboardingTour from '@/components/OnboardingTour';
+import ShowcaseResults from '@/components/ShowcaseResults';
 import { createClient as createSupabase } from '@/lib/supabase/server';
+import type { ShowcaseCampaign } from '@/lib/showcase';
 import RangePills from '@/components/RangePills';
 import LiveActivityHero from '@/components/LiveActivityHero';
 import FleetCountdown from '@/components/FleetCountdown';
@@ -190,9 +192,14 @@ export default async function DashboardPage({
   if (campaigns.length === 0) {
     // Placement-based campaigns (Robot.com offers) live in Supabase — a user
     // who has already placed one should see "in review", not a cold start.
+    // Claimed prospects also get their showcase results, revealed in full.
     const supabase = await createSupabase();
-    const { data: offerRows } = await supabase.rpc('kovio_my_offers');
+    const [{ data: offerRows }, { data: showcaseRows }] = await Promise.all([
+      supabase.rpc('kovio_my_offers'),
+      supabase.rpc('kovio_my_showcases'),
+    ]);
     const placements = Array.isArray(offerRows) ? offerRows.length : 0;
+    const showcases = (showcaseRows as ShowcaseCampaign[]) ?? [];
     return (
       <AppShell page="Overview" action={newCampaignBtn}>
         <OnboardingTour role="advertiser" />
@@ -281,6 +288,21 @@ export default async function DashboardPage({
             </section>
           )}
         </div>
+
+        {/* Claimed prospects: the full results report, revealed. */}
+        {showcases.length > 0 && (
+          <div className="mt-12 rounded-[20px] border border-line bg-panel p-5 sm:p-8">
+            <ShowcaseResults orgName={brand} campaigns={showcases} />
+            <div className="mt-6 flex justify-center border-t border-line pt-6">
+              <Link
+                href="/campaigns/place"
+                className="inline-flex items-center rounded-[11px] bg-accent px-7 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
+              >
+                Run it for real — launch a campaign →
+              </Link>
+            </div>
+          </div>
+        )}
       </AppShell>
     );
   }

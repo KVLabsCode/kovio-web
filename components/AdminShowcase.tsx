@@ -138,7 +138,7 @@ export default function AdminShowcase({ orgId, defaultOpen = false }: { orgId: s
                       <div className="min-w-0 text-sm text-ink">
                         <span className="font-medium">{s.name}</span>
                         <span className="text-ink-2">
-                          {' '}· {compact(s.metrics.impressions)} impressions · {s.duration_label ?? '—'}
+                          {' '}· {compact(s.metrics.impressions ?? 0)} impressions · {s.duration_label ?? '—'}
                           {s.location_label ? ` · ${s.location_label}` : ''}
                           {s.video_url ? ` · ${s.video_kind === 'youtube' ? 'YouTube' : 'video'}` : ' · no footage'}
                         </span>

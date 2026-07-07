@@ -144,38 +144,72 @@ export default function ClaimClient({ token }: { token: string }) {
     </form>
   );
 
-  // ---- Showcase layout: full results report, claim CTA at the bottom -------
+  // ---- Showcase layout: full results report, sticky claim bar at the bottom -
   if (!loadingInfo && hasShowcase) {
     return (
-      <div className="min-h-screen bg-bg px-4 py-10 text-ink sm:px-6">
-        <div className="mx-auto max-w-[960px]">
-          <div className="mb-9 flex items-center justify-center gap-[11px]">
-            <KovioMark className="h-6 w-6 text-accent" />
-            <span className="font-mono text-[15px] tracking-[0.18em]">KOVIO</span>
+      <div className="min-h-screen bg-bg text-ink">
+        <div className="mx-auto max-w-[900px] px-5 pb-36 pt-10 sm:px-8">
+          {/* Blurred until claimed — claiming redirects to their dashboard,
+              where the full report renders sharp. */}
+          <ShowcaseResults orgName={orgName} campaigns={showcases} locked />
+        </div>
+
+        {/* sticky claim bar */}
+        <div id="claim-bar" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 backdrop-blur">
+          <div className="mx-auto max-w-[900px] px-5 py-3.5 sm:px-8">
+            {sessionEmail ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[14px] text-muted">
+                  Signed in as <span className="font-medium text-ink">{sessionEmail}</span> — everything above
+                  is yours to run for real.
+                </p>
+                <div className="flex items-center gap-3">
+                  <form action="/auth/logout" method="post">
+                    <button className="text-[12px] text-muted transition-colors hover:text-ink">Not you?</button>
+                  </form>
+                  <button
+                    onClick={claim}
+                    disabled={busy}
+                    className="rounded-[11px] bg-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+                  >
+                    {busy ? 'Claiming…' : `Claim your ${orgName} dashboard →`}
+                  </button>
+                </div>
+              </div>
+            ) : sent ? (
+              <p className="text-center text-[13px] text-ink">
+                Check your inbox — we sent a secure sign-in link to{' '}
+                <span className="font-semibold">{email}</span>. Open it to save your {orgName} dashboard.
+              </p>
+            ) : (
+              <form onSubmit={sendLink} className="flex flex-wrap items-center justify-between gap-3">
+                <p className="min-w-[200px] text-[14px] text-ink">
+                  <span className="font-semibold">This {orgName} dashboard is ready for you.</span>{' '}
+                  <span className="text-muted">
+                    {info?.invited_email_hint ? `Invite for ${info.invited_email_hint}.` : 'Claim it with your work email.'}
+                  </span>
+                </p>
+                <div className="flex flex-1 items-center justify-end gap-2">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@yourbrand.com"
+                    className="w-full max-w-[260px] rounded-[11px] border border-line bg-field px-3.5 py-2.5 text-[14px] text-ink outline-none transition-colors focus:border-accent"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="shrink-0 rounded-[11px] bg-accent px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+                  >
+                    {busy ? 'Sending…' : `Claim ${orgName} →`}
+                  </button>
+                </div>
+              </form>
+            )}
+            {error && <p className="mt-2 text-center text-[13px] text-danger">{error}</p>}
           </div>
-
-          <ShowcaseResults orgName={orgName} campaigns={showcases} />
-
-          {/* claim CTA */}
-          <div id="claim" className="mx-auto mt-10 max-w-[520px] rounded-[20px] border border-tint-line bg-tint p-7 text-center sm:p-9">
-            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-accent-dark">
-              This account is ready for you
-            </div>
-            <h2 className="mt-3 font-serif text-[30px] font-medium leading-[1.1] tracking-[-0.015em] sm:text-[34px]">
-              Claim your {orgName} account.
-            </h2>
-            <p className="mt-2.5 text-[15px] leading-[1.55] text-muted">
-              {info?.invited_email_hint
-                ? <>This invite is for <span className="font-medium text-ink">{info.invited_email_hint}</span> — sign in with that email and everything above is yours to run for real.</>
-                : <>Sign in with your work email and everything above is yours to run for real — launch campaigns, watch live attention, all priced upfront.</>}
-            </p>
-            <div className="mt-6">{claimBody}</div>
-            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-          </div>
-
-          <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
-            © 2026 Kovio Labs · The robot economy
-          </p>
         </div>
       </div>
     );

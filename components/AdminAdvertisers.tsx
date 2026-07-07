@@ -11,6 +11,7 @@ export interface AdminAdvertiserOrg {
   name: string;
   member_emails: string[];
   pending_invite: string | null;
+  claimed_at: string | null;
 }
 
 // Create a named org (advertiser or operator) from the admin dashboard, then
@@ -81,13 +82,20 @@ export default function AdminAdvertisers({ advertisers }: { advertisers: AdminAd
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-3">
               <span className="text-sm font-medium text-ink">{a.name}</span>
-              <span className="truncate text-xs text-ink-2">
-                {a.member_emails.length > 0
-                  ? `Claimed by ${a.member_emails.join(', ')}`
-                  : a.pending_invite
-                    ? `Claim link pending (${a.pending_invite})`
-                    : 'Not claimed yet'}
-              </span>
+              {a.member_emails.length > 0 ? (
+                <span className="rounded-full bg-good/10 px-2.5 py-1 text-xs text-good">
+                  ✓ Claimed by {a.member_emails.join(', ')}
+                  {a.claimed_at
+                    ? ` · ${new Date(a.claimed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                    : ''}
+                </span>
+              ) : a.pending_invite ? (
+                <span className="rounded-full bg-navy/10 px-2.5 py-1 text-xs text-navy">
+                  Claim link pending ({a.pending_invite})
+                </span>
+              ) : (
+                <span className="rounded-full border border-border-soft px-2.5 py-1 text-xs text-ink-2">Not claimed yet</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Link
