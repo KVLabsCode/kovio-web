@@ -1,17 +1,10 @@
 import { redirect } from 'next/navigation';
-import { api } from '@/lib/api';
-import AppShell from '@/components/AppShell';
-import CampaignWizard from '@/components/CampaignWizard';
 
-export default async function NewCampaignPage() {
-  const { data, error } = await api.campaigns();
-  if (error?.status === 404) redirect('/onboarding');
-  // The free (default-setup) campaign is offered only until the first campaign
-  // exists; after that it's custom (paid) campaigns only.
-  const trialAvailable = (data?.campaigns.length ?? 0) === 0;
-  return (
-    <AppShell page="New campaign">
-      <CampaignWizard trialAvailable={trialAvailable} />
-    </AppShell>
-  );
+// Campaign creation is merged into one flow focused on the Robot.com fleet
+// (/campaigns/place). This route sticks around so every existing "+ New
+// campaign" link and bookmark keeps working. The old self-serve wizard
+// (components/CampaignWizard.tsx) is parked, not deleted — restore this page's
+// previous body to bring it back.
+export default function NewCampaignPage() {
+  redirect('/campaigns/place');
 }

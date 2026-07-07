@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { KovioMark } from '@/components/KovioMark';
 import AdminOffers, { type AdminOffer } from '@/components/AdminOffers';
 import AdminOperators, { type AdminOperator } from '@/components/AdminOperators';
+import AdminUsers, { type AdminUserRow, type AdminOrg } from '@/components/AdminUsers';
 import AdminAdmins from '@/components/AdminAdmins';
 import { usd } from '@/lib/offers';
 
@@ -14,13 +15,6 @@ interface Overview {
   offers_count: number;
   pending_offers: number;
   impressions_count: number;
-}
-interface AdminUser {
-  email: string;
-  org_name: string | null;
-  kind: string | null;
-  role: string | null;
-  created_at: string;
 }
 interface AdminCampaign {
   name: string;
@@ -71,21 +65,23 @@ export default async function AdminPage() {
     );
   }
 
-  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes] = await Promise.all([
+  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes] = await Promise.all([
     supabase.rpc('kovio_admin_overview'),
     supabase.rpc('kovio_admin_users'),
     supabase.rpc('kovio_admin_campaigns'),
     supabase.rpc('kovio_admin_offers'),
     supabase.rpc('kovio_admin_operators'),
     supabase.rpc('kovio_admin_list_admins'),
+    supabase.rpc('kovio_admin_orgs'),
   ]);
 
   const ov = (Array.isArray(ovRes.data) ? ovRes.data[0] : ovRes.data) as Overview | undefined;
-  const users = (usersRes.data as AdminUser[]) ?? [];
+  const users = (usersRes.data as AdminUserRow[]) ?? [];
   const campaigns = (campsRes.data as AdminCampaign[]) ?? [];
   const offers = (offersRes.data as AdminOffer[]) ?? [];
   const operators = (opsRes.data as AdminOperator[]) ?? [];
   const admins = ((adminsRes.data as { email: string }[]) ?? []).map((a) => a.email);
+  const orgs = (orgsRes.data as AdminOrg[]) ?? [];
 
   return (
     <div className="min-h-screen bg-bg text-ink">
@@ -140,31 +136,14 @@ export default async function AdminPage() {
           <AdminAdmins admins={admins} myEmail={user.email ?? ''} />
         </section>
 
-        {/* Users */}
+        {/* Users + org association */}
         <section className="mt-10">
           <h2 className="mb-3 font-serif text-h2 text-ink">Users <span className="text-ink-3">({users.length})</span></h2>
-          <div className="overflow-x-auto rounded-lg border border-border-soft">
-            <table className="w-full text-sm">
-              <thead className="bg-card text-left text-xs uppercase tracking-wide text-ink-3">
-                <tr>
-                  <th className="px-4 py-2.5">Email</th>
-                  <th className="px-4 py-2.5">Organization</th>
-                  <th className="px-4 py-2.5">Kind</th>
-                  <th className="px-4 py-2.5">Role</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u, i) => (
-                  <tr key={i} className="border-t border-border-soft">
-                    <td className="px-4 py-2.5 text-ink">{u.email}</td>
-                    <td className="px-4 py-2.5 text-ink-2">{u.org_name ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-ink-2">{u.kind ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-ink-2">{u.role ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="mb-4 text-sm text-ink-2">
+            Associate any account with an organization — e.g. pick the account that acts for Robot.com,
+            and it receives Robot.com’s incoming campaigns.
+          </p>
+          <AdminUsers users={users} orgs={orgs} />
         </section>
 
         {/* Campaigns */}

@@ -24,17 +24,20 @@ export default function AdminLoginPage() {
     }
   }, []);
 
+  // Locked: the server route only sends a link to allowlisted admin emails,
+  // and answers identically either way (no probing).
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(NEXT)}`, shouldCreateUser: false },
+    const res = await fetch('/api/admin/send-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
+    const json = await res.json().catch(() => ({}));
     setLoading(false);
-    if (error) setError(error.message);
+    if (!res.ok) setError(json.error ?? 'Something went wrong.');
     else setSent(true);
   }
 
@@ -63,7 +66,8 @@ export default function AdminLoginPage() {
           <div className="mt-8">
             <h1 className="font-serif text-[30px] font-medium">Check your email.</h1>
             <p className="mt-2 text-[15px] text-[#b6ac95]">
-              We sent a sign-in link to <span className="text-[#f1ead9]">{email}</span>.
+              If <span className="text-[#f1ead9]">{email}</span> has admin access, a sign-in link is on
+              its way.
             </p>
           </div>
         ) : (

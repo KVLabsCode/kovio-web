@@ -21,15 +21,15 @@ const STEPS: Record<'advertiser' | 'oem', Step[]> = {
     },
     {
       eyebrow: 'Step 1',
-      title: 'Launch a campaign.',
-      body: 'Name it, drop a creative, set targeting and budget — live in about two minutes. Your first campaign is free.',
-      cta: { label: 'Create a campaign →', href: '/campaigns/new' },
+      title: 'Launch a campaign on Robot.com.',
+      body: 'Name it, drop a creative, pick your dates and budget — it goes to the Robot.com fleet for review and runs on real robots once approved.',
+      cta: { label: 'Create a campaign →', href: '/campaigns/place' },
     },
     {
       eyebrow: 'Step 2',
-      title: 'Place with a fleet operator.',
-      body: 'Want to run on a specific fleet? Place a custom campaign directly with an operator — they review the content and accept it before it runs.',
-      cta: { label: 'Place with a fleet →', href: '/campaigns/place' },
+      title: 'Track it under Placements.',
+      body: 'Follow each campaign’s status, confirm any date changes the operator proposes, and message them directly on the campaign.',
+      cta: { label: 'View placements →', href: '/campaigns/placements' },
     },
     {
       eyebrow: 'Step 3',

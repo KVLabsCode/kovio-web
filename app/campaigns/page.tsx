@@ -56,12 +56,6 @@ export default async function CampaignsPage({
           </Link>
           <Link
             href="/campaigns/place"
-            className="inline-flex items-center rounded-[11px] border border-line-strong px-5 py-[14px] text-[16px] text-ink transition-colors hover:border-accent"
-          >
-            Place with a fleet
-          </Link>
-          <Link
-            href="/campaigns/new"
             className="inline-flex items-center rounded-[11px] bg-accent px-6 py-[14px] text-[16px] text-white transition-colors hover:bg-accent-dark"
           >
             + New campaign

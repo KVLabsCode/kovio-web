@@ -9,6 +9,7 @@ export interface AdminOperator {
   org_id: string;
   name: string;
   accepting: boolean;
+  member_emails: string[];
 }
 
 // Fleet operators with their receive-campaigns status. "Edit settings" lets an
@@ -38,7 +39,7 @@ export default function AdminOperators({ operators }: { operators: AdminOperator
       {operators.map((op) => (
         <div key={op.org_id} className="rounded-lg border border-border-soft bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <span className="text-sm font-medium text-ink">{op.name}</span>
               <span
                 className={`rounded-full px-2.5 py-1 text-xs ${
@@ -46,6 +47,11 @@ export default function AdminOperators({ operators }: { operators: AdminOperator
                 }`}
               >
                 {op.accepting ? 'Accepting campaigns' : 'Not accepting'}
+              </span>
+              <span className="truncate text-xs text-ink-2">
+                {op.member_emails.length > 0
+                  ? `Accounts: ${op.member_emails.join(', ')}`
+                  : 'No account associated — assign one from the Users table'}
               </span>
             </div>
             <button

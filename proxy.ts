@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   '/login',
   '/oem/login',
   '/admin/login',
+  '/api/admin/send-link', // pre-auth by definition: it sends the admin magic link
   '/auth/callback',
   '/auth/confirm',
   '/r/',
