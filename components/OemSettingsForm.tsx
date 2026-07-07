@@ -21,6 +21,9 @@ export default function OemSettingsForm({
 }) {
   const router = useRouter();
   const [accepting, setAccepting] = useState(initial?.published ?? false);
+  const [priceUsd, setPriceUsd] = useState(initial?.price_cents ? (initial.price_cents / 100).toString() : '500');
+  const [priceUnit, setPriceUnit] = useState<'per_day' | 'flat'>(initial?.price_unit ?? 'per_day');
+  const [minDays, setMinDays] = useState(initial?.min_days?.toString() ?? '');
   const [windows, setWindows] = useState<string[]>(initial?.time_windows?.length ? initial.time_windows : ['All day']);
   const [locations, setLocations] = useState<string[]>(initial?.locations ?? []);
   const [locInput, setLocInput] = useState('');
@@ -60,13 +63,13 @@ export default function OemSettingsForm({
     setSaving(true);
     const supabase = createClient();
     const shared = {
-      p_price_cents: initial?.price_cents ?? 0,
-      p_price_unit: initial?.price_unit ?? 'per_day',
+      p_price_cents: Math.max(0, Math.round(parseFloat(priceUsd || '0') * 100)),
+      p_price_unit: priceUnit,
       p_time_windows: windows,
       p_locations: locations,
       p_available_from: availFrom || null,
       p_available_to: availTo || null,
-      p_min_days: initial?.min_days ?? null,
+      p_min_days: minDays ? parseInt(minDays, 10) : null,
       p_note: note.trim() || null,
       p_published: accepting,
     };
@@ -108,6 +111,40 @@ export default function OemSettingsForm({
       </div>
 
       <div className={`mt-6 space-y-5 border-t border-border-soft pt-6 ${accepting ? '' : 'pointer-events-none opacity-50'}`}>
+        {/* Pricing — this is the set price advertisers pay at submission. */}
+        <div className="grid gap-5 sm:grid-cols-3">
+          <div>
+            <label className={labelCls}>Campaign price (USD)</label>
+            <input type="number" min="0" step="1" value={priceUsd} onChange={(e) => setPriceUsd(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Charged</label>
+            <div className="flex gap-2">
+              {(['per_day', 'flat'] as const).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setPriceUnit(u)}
+                  className={`flex-1 rounded-md border px-3 py-2.5 text-sm transition-colors ${
+                    priceUnit === u ? 'border-rust bg-rust/10 text-rust' : 'border-border-soft text-ink hover:border-rust'
+                  }`}
+                >
+                  {u === 'per_day' ? 'Per day' : 'Flat / campaign'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {priceUnit === 'per_day' && (
+            <div>
+              <label className={labelCls}>Min days</label>
+              <input type="number" min="1" value={minDays} onChange={(e) => setMinDays(e.target.value)} placeholder="—" className={inputCls} />
+            </div>
+          )}
+        </div>
+        <p className="-mt-2 text-xs text-ink-3">
+          Advertisers pay this exact price when they submit a campaign — {priceUnit === 'per_day' ? 'price × campaign days' : 'one flat charge'}.
+        </p>
+
         <div>
           <label className={labelCls}>Time windows you'll run campaigns</label>
           <div className="flex flex-wrap gap-2">

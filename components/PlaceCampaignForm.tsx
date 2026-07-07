@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { apiClient } from '@/lib/api-client';
-import type { PlaceOfferBody } from '@/lib/offers';
+import { daysBetween, totalCents, priceLabel, usd, type OemTerms, type PlaceOfferBody } from '@/lib/offers';
 
 const IMAGE_MAX = 8 * 1024 * 1024;
 const VIDEO_MAX = 50 * 1024 * 1024;
@@ -29,6 +29,9 @@ type Target = { oem_org_id: string; oem_name: string; link: string };
 
 export default function PlaceCampaignForm() {
   const [target, setTarget] = useState<Target | null>(null);
+  // The operator's published campaign settings — THE price. No advertiser-set
+  // budgets: the charge is computed from these terms and the chosen dates.
+  const [terms, setTerms] = useState<OemTerms | null>(null);
 
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
@@ -37,7 +40,6 @@ export default function PlaceCampaignForm() {
   const [uploading, setUploading] = useState(false);
   const [category, setCategory] = useState('brand');
   const [presets, setPresets] = useState<Record<string, boolean>>({ morning: false, evening: false, person_watching: false });
-  const [budgetUsd, setBudgetUsd] = useState('250');
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [message, setMessage] = useState('');
@@ -54,12 +56,22 @@ export default function PlaceCampaignForm() {
       const supabase = createClient();
       const { data } = await supabase.rpc('kovio_place_target');
       const row = Array.isArray(data) ? data[0] : data;
-      if (alive && row) setTarget(row as Target);
+      if (!alive || !row) return;
+      setTarget(row as Target);
+      const { data: t } = await supabase.rpc('kovio_oem_terms', { p_oem_org_id: (row as Target).oem_org_id });
+      const termsRow = Array.isArray(t) ? t[0] : t;
+      if (alive && termsRow) setTerms(termsRow as OemTerms);
     })();
     return () => {
       alive = false;
     };
   }, []);
+
+  // Set price, straight from the operator's terms + the chosen dates.
+  const days = daysBetween(startAt || null, endAt || null);
+  const total = terms ? (terms.price_unit === 'flat' ? terms.price_cents : totalCents(terms, days)) : 0;
+  const perDay = terms?.price_unit === 'per_day';
+  const minDays = terms?.min_days ?? 1;
 
   async function handleFile(file: File) {
     const isVid = file.type.startsWith('video');
@@ -94,6 +106,11 @@ export default function PlaceCampaignForm() {
     if (!target) return setError('The fleet is still loading — one moment.');
     if (!name.trim()) return setError('Give the campaign a name.');
     if (!creativeUrl) return setError('Add a creative — upload an image or video.');
+    // Per-day pricing needs real dates, and at least the operator's minimum.
+    if (terms && perDay) {
+      if (!startAt || !endAt) return setError('Pick your start and end dates — pricing is per day.');
+      if (days < minDays) return setError(`This fleet has a ${minDays}-day minimum.`);
+    }
     setLoading(true);
     setError('');
 
@@ -110,7 +127,8 @@ export default function PlaceCampaignForm() {
       creativeType,
       category,
       targeting,
-      budgetCents: Math.round(parseFloat(budgetUsd || '0') * 100),
+      // The set price from the operator's terms — not an advertiser-chosen budget.
+      budgetCents: total,
       cpiCents: null,
       startAt: startAt || null,
       endAt: endAt || null,
@@ -131,12 +149,11 @@ export default function PlaceCampaignForm() {
       return;
     }
 
-    // Campaign submitted — collect the budget via Stripe Checkout. The offer is
-    // already recorded, so a canceled/failed payment never loses the campaign.
-    const budgetCents = body.budgetCents ?? 0;
-    if (budgetCents > 0) {
+    // Campaign submitted — collect the set price via Stripe Checkout. The offer
+    // is already recorded, so a canceled/failed payment never loses the campaign.
+    if (total > 0) {
       setDone('paying');
-      const co = await apiClient.checkout(budgetCents, {
+      const co = await apiClient.checkout(total, {
         success_path: '/campaigns?paid=1',
         cancel_path: '/campaigns?payment=canceled',
       });
@@ -277,32 +294,58 @@ export default function PlaceCampaignForm() {
               </>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelCls}>Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
-                {['brand', 'food', 'retail', 'event', 'other'].map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Budget (USD)</label>
-              <input type="number" min="0" step="1" value={budgetUsd} onChange={(e) => setBudgetUsd(e.target.value)} className={inputCls} />
-            </div>
+          <div>
+            <label className={labelCls}>Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
+              {['brand', 'food', 'retail', 'event', 'other'].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Start date</label>
-              <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
+              <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} required={!!terms && perDay} />
             </div>
             <div>
               <label className={labelCls}>End date</label>
-              <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
+              <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} required={!!terms && perDay} />
             </div>
           </div>
+
+          {/* Set price — comes from the operator's campaign settings, not an input. */}
+          {terms ? (
+            <div className="rounded-[12px] bg-tint p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-accent-dark">Price</div>
+                <div className="text-[13px] text-muted">{priceLabel(terms)}{perDay && minDays > 1 ? ` · ${minDays}-day minimum` : ''}</div>
+              </div>
+              <div className="mt-1 text-[26px] font-medium text-ink">
+                {perDay
+                  ? days > 0
+                    ? `${usd(total)} `
+                    : '— '
+                  : `${usd(total)} `}
+                {perDay && days > 0 && (
+                  <span className="text-[14px] font-normal text-muted">
+                    ({usd(terms.price_cents)} × {days} day{days === 1 ? '' : 's'})
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-[13px] text-muted">
+                {perDay && days === 0
+                  ? 'Pick your start and end dates to see the total.'
+                  : 'Charged once via secure Stripe Checkout when you submit.'}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-[12px] border border-dashed border-line-strong p-4 text-[13px] text-muted">
+              Pricing for this fleet is being finalized — submit your campaign and Kovio will confirm the
+              price with you before anything runs.
+            </div>
+          )}
           <div>
             <div className={labelCls}>When to run</div>
             <div className="flex flex-wrap gap-2">
@@ -343,7 +386,7 @@ export default function PlaceCampaignForm() {
             disabled={loading || uploading || !target}
             className="rounded-[11px] bg-accent px-6 py-[13px] text-[15px] text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
-            {loading ? 'Submitting…' : 'Submit campaign →'}
+            {loading ? 'Submitting…' : total > 0 ? `Submit & pay ${usd(total)} →` : 'Submit campaign →'}
           </button>
           <Link href="/campaigns" className="text-[15px] text-muted transition-colors hover:text-ink">
             Cancel
