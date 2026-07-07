@@ -14,71 +14,113 @@ export interface AdminOperator {
   pending_invite: string | null;
 }
 
-// Per-operator "send claim link" control: emails the OEM a /claim/<token> link
-// that hands them the account when they sign in with that email.
+// Per-operator claim-link control. Copy-first: generate a /claim/<token> link
+// and copy it to share however you like (email optional — providing one locks
+// the link to that address; emailing it from here is still available).
 function InviteControl({ op }: { op: AdminOperator }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState('');
+  const [busy, setBusy] = useState<'' | 'copy' | 'email'>('');
+  const [link, setLink] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
-  async function send() {
-    if (!email.trim()) return;
-    setBusy(true);
+  async function generate(send: boolean) {
+    if (send && !email.trim()) {
+      setError('Enter the OEM’s email to send it.');
+      return;
+    }
+    setBusy(send ? 'email' : 'copy');
     setError('');
+    setNotice('');
     const res = await fetch('/api/admin/invite-operator', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orgId: op.org_id, email: email.trim() }),
+      body: JSON.stringify({ orgId: op.org_id, email: email.trim() || undefined, send }),
     });
     const json = await res.json().catch(() => ({}));
-    setBusy(false);
+    setBusy('');
     if (!res.ok) {
-      setError(json.error ?? 'Could not send the invite.');
+      setError(json.error ?? 'Could not create the claim link.');
       return;
     }
-    setResult(json.emailed ? `Invite emailed to ${email.trim()}.` : `Invite created — email failed, share the link manually: ${json.claimUrl}`);
-    setEmail('');
-    setOpen(false);
+    setLink(json.claimUrl ?? '');
+    if (json.claimUrl) {
+      try {
+        await navigator.clipboard.writeText(json.claimUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch {}
+    }
+    if (send) setNotice(json.emailed ? `Also emailed to ${email.trim()}.` : 'Email failed — share the copied link instead.');
+    else setNotice(email.trim() ? `Link locked to ${email.trim()}.` : 'Open link — whoever claims it first gets the account.');
     router.refresh();
   }
 
   return (
     <div className="mt-2">
-      {op.pending_invite && !result && (
-        <p className="text-xs text-navy">Invite pending: {op.pending_invite}</p>
+      {op.pending_invite && !link && (
+        <p className="text-xs text-navy">Claim link pending ({op.pending_invite})</p>
       )}
-      {result && <p className="break-all text-xs text-good">{result}</p>}
+
       {open ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            placeholder="operator@robot.com"
-            className="w-64 rounded-md border border-border-soft bg-card px-3 py-2 text-sm text-ink outline-none focus:border-rust"
-          />
-          <button onClick={send} disabled={busy || !email.trim()} className="rounded-md bg-rust px-3 py-2 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40">
-            {busy ? 'Sending…' : 'Send claim link'}
-          </button>
-          <button onClick={() => setOpen(false)} disabled={busy} className="text-sm text-ink-2 hover:text-ink">
-            Cancel
-          </button>
+        <div className="mt-1.5 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="OEM email (optional — locks the link to it)"
+              className="w-72 rounded-md border border-border-soft bg-card px-3 py-2 text-sm text-ink outline-none focus:border-rust"
+            />
+            <button
+              onClick={() => generate(false)}
+              disabled={!!busy}
+              className="rounded-md bg-rust px-3 py-2 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40"
+            >
+              {busy === 'copy' ? 'Generating…' : copied ? 'Copied ✓' : 'Generate & copy link'}
+            </button>
+            <button
+              onClick={() => generate(true)}
+              disabled={!!busy}
+              className="rounded-md border border-border-soft px-3 py-2 text-sm text-ink transition-colors hover:bg-page disabled:opacity-40"
+            >
+              {busy === 'email' ? 'Sending…' : 'Email it too'}
+            </button>
+            <button onClick={() => setOpen(false)} disabled={!!busy} className="text-sm text-ink-2 hover:text-ink">
+              Close
+            </button>
+          </div>
+
+          {link && (
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="max-w-full break-all rounded-md border border-border-soft bg-page px-2.5 py-1.5 text-xs text-ink-2">
+                {link}
+              </code>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(link);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2500);
+                  } catch {}
+                }}
+                className="rounded-md border border-border-soft px-2.5 py-1.5 text-xs text-ink transition-colors hover:bg-page"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+          )}
+          {notice && <p className="text-xs text-good">{notice}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
         </div>
       ) : (
         <button onClick={() => setOpen(true)} className="text-sm text-rust transition-colors hover:text-rust-dark">
-          {op.pending_invite ? 'Resend / new claim link' : '+ Send claim link to the OEM'}
+          {op.pending_invite ? 'New claim link' : '+ Claim link for this OEM'}
         </button>
       )}
-      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }

@@ -115,9 +115,18 @@ export default function ClaimClient({ token }: { token: string }) {
               Claim <em className="italic text-accent">{orgName}</em> on Kovio.
             </h1>
             <p className="mt-2 text-[15px] text-muted">
-              This invite is for <span className="font-medium text-ink">{info.invited_email_hint}</span>. Sign in
-              with that email and the {orgName} operator account — campaign inbox, pricing, schedule and
-              earnings — is yours.
+              {info.invited_email_hint ? (
+                <>
+                  This invite is for <span className="font-medium text-ink">{info.invited_email_hint}</span>. Sign in
+                  with that email and the {orgName} operator account — campaign inbox, pricing, schedule and
+                  earnings — is yours.
+                </>
+              ) : (
+                <>
+                  Sign in with your work email and the {orgName} operator account — campaign inbox, pricing,
+                  schedule and earnings — is yours.
+                </>
+              )}
             </p>
 
             {sessionEmail ? (
