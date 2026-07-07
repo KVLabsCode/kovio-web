@@ -4,7 +4,16 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { apiClient } from '@/lib/api-client';
-import { daysBetween, totalCents, priceLabel, usd, type OemTerms, type PlaceOfferBody } from '@/lib/offers';
+import {
+  daysBetween,
+  totalCents,
+  priceLabel,
+  usd,
+  dateRange,
+  WINDOW_RULES,
+  type OemTerms,
+  type PlaceOfferBody,
+} from '@/lib/offers';
 
 const IMAGE_MAX = 8 * 1024 * 1024;
 const VIDEO_MAX = 50 * 1024 * 1024;
@@ -40,6 +49,9 @@ export default function PlaceCampaignForm() {
   const [uploading, setUploading] = useState(false);
   const [category, setCategory] = useState('brand');
   const [presets, setPresets] = useState<Record<string, boolean>>({ morning: false, evening: false, person_watching: false });
+  // Advertiser's picks WITHIN the operator's published options.
+  const [selWindows, setSelWindows] = useState<string[]>([]);
+  const [selLocs, setSelLocs] = useState<string[]>([]);
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [message, setMessage] = useState('');
@@ -60,7 +72,13 @@ export default function PlaceCampaignForm() {
       setTarget(row as Target);
       const { data: t } = await supabase.rpc('kovio_oem_terms', { p_oem_org_id: (row as Target).oem_org_id });
       const termsRow = Array.isArray(t) ? t[0] : t;
-      if (alive && termsRow) setTerms(termsRow as OemTerms);
+      if (alive && termsRow) {
+        const tr = termsRow as OemTerms;
+        setTerms(tr);
+        // Default to everything the operator offers — the advertiser narrows down.
+        setSelWindows(tr.time_windows ?? []);
+        setSelLocs(tr.locations ?? []);
+      }
     })();
     return () => {
       alive = false;
@@ -106,17 +124,36 @@ export default function PlaceCampaignForm() {
     if (!target) return setError('The fleet is still loading — one moment.');
     if (!name.trim()) return setError('Give the campaign a name.');
     if (!creativeUrl) return setError('Add a creative — upload an image or video.');
-    // Per-day pricing needs real dates, and at least the operator's minimum.
-    if (terms && perDay) {
-      if (!startAt || !endAt) return setError('Pick your start and end dates — pricing is per day.');
-      if (days < minDays) return setError(`This fleet has a ${minDays}-day minimum.`);
+    // Everything must fit within the operator's published options.
+    if (terms) {
+      if (perDay && (!startAt || !endAt)) return setError('Pick your start and end dates — pricing is per day.');
+      if (perDay && days < minDays) return setError(`This fleet has a ${minDays}-day minimum.`);
+      if (terms.available_from && startAt && startAt < terms.available_from)
+        return setError(`This fleet is available ${dateRange(terms.available_from, terms.available_to)}.`);
+      if (terms.available_to && endAt && endAt > terms.available_to)
+        return setError(`This fleet is available ${dateRange(terms.available_from, terms.available_to)}.`);
+      if (terms.time_windows.length > 0 && selWindows.length === 0)
+        return setError('Pick at least one time window.');
+      if (terms.locations.length > 0 && selLocs.length === 0)
+        return setError('Pick at least one location.');
     }
     setLoading(true);
     setError('');
 
-    const on = Object.entries(presets).filter(([, v]) => v).map(([k]) => k);
-    const targeting = on.map((k) => PRESETS[k]);
-    const timeWindow = on.length ? on.map((k) => TIME_LABELS[k]).join(' · ') : 'All day';
+    // Time + targeting come from the operator's published options when they
+    // exist; otherwise the generic presets.
+    let targeting: Array<Record<string, unknown>>;
+    let timeWindow: string;
+    if (terms && terms.time_windows.length > 0) {
+      targeting = selWindows
+        .map((w) => WINDOW_RULES[w])
+        .filter((r): r is Record<string, unknown> => r != null);
+      timeWindow = selWindows.join(' · ');
+    } else {
+      const on = Object.entries(presets).filter(([, v]) => v).map(([k]) => k);
+      targeting = on.map((k) => PRESETS[k]);
+      timeWindow = on.length ? on.map((k) => TIME_LABELS[k]).join(' · ') : 'All day';
+    }
 
     const body: PlaceOfferBody = {
       targetOemId: target.oem_org_id,
@@ -133,7 +170,10 @@ export default function PlaceCampaignForm() {
       startAt: startAt || null,
       endAt: endAt || null,
       timeWindow,
-      locationLabel: target.oem_name,
+      locationLabel:
+        terms && terms.locations.length > 0 && selLocs.length > 0
+          ? selLocs.join(' · ')
+          : target.oem_name,
       message: message.trim() || null,
     };
 
@@ -223,6 +263,7 @@ export default function PlaceCampaignForm() {
               <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-white">Live</span>
             </div>
             <p className="mt-1.5 text-[13px] text-muted">Humanoid robots on real streets.</p>
+            {terms?.note && <p className="mt-1 text-[13px] italic text-muted">“{terms.note}”</p>}
             {target?.link && (
               <a href={target.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex text-[13px] text-accent-dark hover:text-accent">
                 robot.com ↗
@@ -307,13 +348,34 @@ export default function PlaceCampaignForm() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Start date</label>
-              <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} required={!!terms && perDay} />
+              <input
+                type="date"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                min={terms?.available_from ?? undefined}
+                max={terms?.available_to ?? undefined}
+                className={inputCls}
+                required={!!terms && perDay}
+              />
             </div>
             <div>
               <label className={labelCls}>End date</label>
-              <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} required={!!terms && perDay} />
+              <input
+                type="date"
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+                min={startAt || terms?.available_from || undefined}
+                max={terms?.available_to ?? undefined}
+                className={inputCls}
+                required={!!terms && perDay}
+              />
             </div>
           </div>
+          {terms && (terms.available_from || terms.available_to) && (
+            <p className="-mt-2 text-[13px] text-muted">
+              This fleet is available {dateRange(terms.available_from, terms.available_to)}.
+            </p>
+          )}
 
           {/* Set price — comes from the operator's campaign settings, not an input. */}
           {terms ? (
@@ -348,25 +410,69 @@ export default function PlaceCampaignForm() {
           )}
           <div>
             <div className={labelCls}>When to run</div>
-            <div className="flex flex-wrap gap-2">
-              {[
-                ['morning', 'Mornings 6–11'],
-                ['evening', 'Evenings 5–9'],
-                ['person_watching', 'Only when watched'],
-              ].map(([k, label]) => (
-                <button
-                  type="button"
-                  key={k}
-                  onClick={() => setPresets((p) => ({ ...p, [k]: !p[k] }))}
-                  className={`rounded-full border px-4 py-2 text-[14px] transition-colors ${
-                    presets[k] ? 'border-accent bg-tint text-accent-dark' : 'border-line-strong text-ink hover:border-accent'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {terms && terms.time_windows.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {terms.time_windows.map((w) => (
+                    <button
+                      type="button"
+                      key={w}
+                      onClick={() =>
+                        setSelWindows((p) => (p.includes(w) ? p.filter((x) => x !== w) : [...p, w]))
+                      }
+                      className={`rounded-full border px-4 py-2 text-[14px] transition-colors ${
+                        selWindows.includes(w) ? 'border-accent bg-tint text-accent-dark' : 'border-line-strong text-ink hover:border-accent'
+                      }`}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[13px] text-muted">These are the windows this fleet runs campaigns.</p>
+              </>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ['morning', 'Mornings 6–11'],
+                  ['evening', 'Evenings 5–9'],
+                  ['person_watching', 'Only when watched'],
+                ].map(([k, label]) => (
+                  <button
+                    type="button"
+                    key={k}
+                    onClick={() => setPresets((p) => ({ ...p, [k]: !p[k] }))}
+                    className={`rounded-full border px-4 py-2 text-[14px] transition-colors ${
+                      presets[k] ? 'border-accent bg-tint text-accent-dark' : 'border-line-strong text-ink hover:border-accent'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+          {terms && terms.locations.length > 0 && (
+            <div>
+              <div className={labelCls}>Where it runs</div>
+              <div className="flex flex-wrap gap-2">
+                {terms.locations.map((l) => (
+                  <button
+                    type="button"
+                    key={l}
+                    onClick={() =>
+                      setSelLocs((p) => (p.includes(l) ? p.filter((x) => x !== l) : [...p, l]))
+                    }
+                    className={`rounded-full border px-4 py-2 text-[14px] transition-colors ${
+                      selLocs.includes(l) ? 'border-accent bg-tint text-accent-dark' : 'border-line-strong text-ink hover:border-accent'
+                    }`}
+                  >
+                    📍 {l}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[13px] text-muted">The fleet’s coverage — pick where your campaign runs.</p>
+            </div>
+          )}
           <div>
             <label className={labelCls}>Message to the operator (optional)</label>
             <textarea

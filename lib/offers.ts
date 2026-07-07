@@ -14,6 +14,14 @@ export interface OemDirectoryRow {
   region: string | null;
 }
 
+// An exact operator location: geocoded label + coordinates. Legacy free-text
+// entries have null coords (map falls back to a name search).
+export interface GeoPoint {
+  label: string;
+  lat: number | null;
+  lng: number | null;
+}
+
 // Terms an operator publishes (one set per operator). Drives the options an
 // advertiser sees when they choose that operator on /campaigns/place.
 export interface OemTerms {
@@ -21,6 +29,7 @@ export interface OemTerms {
   price_unit: 'per_day' | 'flat';
   time_windows: string[];
   locations: string[];
+  locations_geo: GeoPoint[];
   available_from: string | null;
   available_to: string | null;
   min_days: number | null;
@@ -29,6 +38,15 @@ export interface OemTerms {
 
 // Preset dayparting windows an operator can offer.
 export const TIME_WINDOW_OPTIONS = ['Mornings 6–11', 'Midday 11–5', 'Evenings 5–9', 'Late 9–12', 'All day'];
+
+// Operator window label → engine targeting rule (hour_of_day ranges).
+export const WINDOW_RULES: Record<string, Record<string, unknown> | null> = {
+  'Mornings 6–11': { field: 'hour_of_day', op: 'between', value: [6, 11] },
+  'Midday 11–5': { field: 'hour_of_day', op: 'between', value: [11, 17] },
+  'Evenings 5–9': { field: 'hour_of_day', op: 'between', value: [17, 21] },
+  'Late 9–12': { field: 'hour_of_day', op: 'between', value: [21, 24] },
+  'All day': null,
+};
 
 // The operator's own view of their settings (includes the receive toggle).
 export interface MyOemTerms extends OemTerms {
