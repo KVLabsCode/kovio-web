@@ -5,6 +5,7 @@ import { formatCount, formatMoney, formatPct, attentionRate } from '@/lib/format
 import { EngagementFunnel } from '@/components/EngagementFunnel';
 import type { Campaign, RecentImpression } from '@/lib/types';
 import AppShell from '@/components/AppShell';
+import OnboardingTour from '@/components/OnboardingTour';
 import RangePills from '@/components/RangePills';
 import LiveActivityHero from '@/components/LiveActivityHero';
 import FleetCountdown from '@/components/FleetCountdown';
@@ -185,6 +186,7 @@ export default async function DashboardPage({
   if (campaigns.length === 0) {
     return (
       <AppShell page="Overview" action={newCampaignBtn}>
+        <OnboardingTour role="advertiser" />
         <LiveActivityHero />
         <div className="mt-7 font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
           {dateLabel(now)}

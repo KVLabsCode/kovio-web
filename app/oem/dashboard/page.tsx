@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatCount, formatMoney, formatRelative, formatPct } from '@/lib/format';
 import AppShell from '@/components/AppShell';
+import OnboardingTour from '@/components/OnboardingTour';
 import { SectionHeader } from '@/components/SectionHeader';
 import { MetricCard } from '@/components/MetricCard';
 import { EngagementFunnel } from '@/components/EngagementFunnel';
@@ -73,6 +74,7 @@ export default async function OemDashboardPage({
 
   return (
     <AppShell>
+      <OnboardingTour role="oem" />
       <SectionHeader
         label="OVERVIEW · LAST 28 DAYS"
         greeting={`${greetingPrefix()}, ${name}.`}
