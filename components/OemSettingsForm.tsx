@@ -10,21 +10,47 @@ import { dateRange, TIME_WINDOW_OPTIONS, type GeoPoint, type MyOemTerms } from '
 const dateFieldCls =
   'flex w-full items-center justify-between rounded-md border border-border-soft bg-card px-3 py-2.5 text-left text-sm text-ink outline-none transition-colors focus:border-rust';
 
-// Free geocoder (OpenStreetMap Nominatim) so locations are picked from real
-// places with exact coordinates — no free typing. Swappable for Google Places
-// Autocomplete once a NEXT_PUBLIC_GOOGLE_MAPS_API_KEY exists.
+// Free typeahead geocoder (Photon / OpenStreetMap) so locations are picked from
+// real places with exact coordinates — no free typing. Labels are composed as
+// "Place, City, State" (plus country outside the US). Swappable for Google
+// Places Autocomplete once a NEXT_PUBLIC_GOOGLE_MAPS_API_KEY exists.
+interface PhotonFeature {
+  properties: {
+    name?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+    country?: string;
+    countrycode?: string;
+  };
+  geometry: { coordinates: [number, number] };
+}
+
 async function searchPlaces(q: string): Promise<GeoPoint[]> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
-    { headers: { Accept: 'application/json' } },
-  );
+  const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=en`, {
+    headers: { Accept: 'application/json' },
+  });
   if (!res.ok) return [];
-  const rows = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
-  return rows.map((r) => ({
-    label: r.display_name.split(',').slice(0, 3).map((s) => s.trim()).join(', '),
-    lat: parseFloat(r.lat),
-    lng: parseFloat(r.lon),
-  }));
+  const data = (await res.json()) as { features?: PhotonFeature[] };
+  const seen = new Set<string>();
+  const out: GeoPoint[] = [];
+  for (const f of data.features ?? []) {
+    const p = f.properties ?? {};
+    if (!p.name) continue;
+    const label = [
+      p.name,
+      p.city && p.city !== p.name ? p.city : null,
+      p.state && p.state !== p.name ? p.state : null,
+      p.countrycode?.toUpperCase() !== 'US' ? p.country : null,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    if (!label || seen.has(label)) continue; // collapse duplicate places
+    seen.add(label);
+    out.push({ label, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] });
+    if (out.length >= 5) break;
+  }
+  return out;
 }
 
 // Legacy rows may have labels without coordinates — carry them as GeoPoints.
@@ -301,7 +327,7 @@ export default function OemSettingsForm({
                   <iframe
                     key={mapQuery}
                     title={`Map of ${focused.label}`}
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=${focused.lat != null ? 14 : 11}&output=embed`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=${focused.lat != null ? 15 : 11}&output=embed`}
                     className="h-64 w-full border-0"
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
