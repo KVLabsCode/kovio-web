@@ -23,3 +23,12 @@ returns boolean language sql security definer set search_path = public stable as
   select exists (select 1 from public.admin_emails a where a.email = lower(trim(p_email)));
 $$;
 grant execute on function public.kovio_is_admin_email(text) to anon, authenticated;
+
+-- Case-insensitive admin match (JWT emails vs allowlist entries).
+create or replace function public.kovio_is_admin()
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (
+    select 1 from public.admin_emails a
+    where lower(a.email) = lower(coalesce(public._kovio_caller_email(), ''))
+  );
+$$;

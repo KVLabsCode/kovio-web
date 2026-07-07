@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { api } from '@/lib/api';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function Home() {
   const { data, error } = await api.me();
@@ -8,10 +9,15 @@ export default async function Home() {
   if (!error && data) redirect('/dashboard');
   // An OEM hitting the advertiser /me → route to the OEM dashboard.
   if (error?.status === 403 && error.code === 'wrong_user_kind') redirect('/oem/dashboard');
-  // Not onboarded yet: fleet operators → OEM onboarding, everyone else →
-  // advertiser onboarding. The intent cookie (set by /oem/login) survives even
-  // when Supabase falls back to the Site URL and drops the redirect's ?next=.
+  // Not onboarded yet. Staff accounts first: an allowlisted admin with no org
+  // belongs in /admin, never in advertiser onboarding (this catches Supabase's
+  // Site-URL fallback dropping /admin/login's ?next=). Then fleet operators →
+  // OEM onboarding (intent cookie set by /oem/login), everyone else →
+  // advertiser onboarding.
   if (error?.status === 404) {
+    const supabase = await createClient();
+    const { data: isAdmin } = await supabase.rpc('kovio_is_admin');
+    if (isAdmin) redirect('/admin');
     const kind = (await cookies()).get('kovio_onboard_kind')?.value;
     redirect(kind === 'oem' ? '/oem/onboarding' : '/onboarding');
   }
