@@ -5,7 +5,9 @@ import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/server';
 import AppShell from '@/components/AppShell';
 import MyPlacements from '@/components/MyPlacements';
+import FreeTrialCampaigns from '@/components/FreeTrialCampaigns';
 import type { MyOffer } from '@/lib/offers';
+import type { ShowcaseCampaign } from '@/lib/showcase';
 
 // The Campaigns page IS the placements list: every campaign submitted to the
 // Robot.com fleet, with its review status, date-change confirmations and the
@@ -22,8 +24,12 @@ export default async function CampaignsPage({
   if (me.error?.status === 403 && me.error.code === 'wrong_user_kind') redirect('/oem/campaigns');
 
   const supabase = await createClient();
-  const { data } = await supabase.rpc('kovio_my_offers');
+  const [{ data }, { data: showRows }] = await Promise.all([
+    supabase.rpc('kovio_my_offers'),
+    supabase.rpc('kovio_my_showcases'),
+  ]);
   const offers = (data as MyOffer[]) ?? [];
+  const showcases = (showRows as ShowcaseCampaign[]) ?? [];
   const needsYou = offers.filter((o) => o.status === 'countered').length;
 
   return (
@@ -61,7 +67,8 @@ export default async function CampaignsPage({
         </div>
       )}
 
-      <MyPlacements offers={offers} />
+      {(offers.length > 0 || showcases.length === 0) && <MyPlacements offers={offers} />}
+      <FreeTrialCampaigns campaigns={showcases} />
     </AppShell>
   );
 }

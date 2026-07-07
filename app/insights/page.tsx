@@ -9,6 +9,8 @@ import AppShell from '@/components/AppShell';
 import IntelligencePanel from '@/components/IntelligencePanel';
 import ExportPdfButton from '@/components/ExportPdfButton';
 import CampaignPicker from '@/components/CampaignPicker';
+import { createClient } from '@/lib/supabase/server';
+import type { MyOffer } from '@/lib/offers';
 
 function hourLabel(h: number): string {
   if (h === 12) return '12p';
@@ -42,6 +44,69 @@ export default async function InsightsPage({
   const now = new Date();
   const monthLabel = now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   const generated = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Insights unlock after FIVE completed campaigns: free-trial (showcase)
+  // campaigns count, as do accepted placements whose run has ended and any
+  // completed engine campaigns. Below that, a single report is too thin for
+  // Kovio Intelligence to say anything credible.
+  const supabase = await createClient();
+  const [{ data: showRows }, { data: offerRows }] = await Promise.all([
+    supabase.rpc('kovio_my_showcases'),
+    supabase.rpc('kovio_my_offers'),
+  ]);
+  const todayKey = now.toISOString().slice(0, 10);
+  const offers = (offerRows as MyOffer[]) ?? [];
+  const completedCount =
+    (Array.isArray(showRows) ? showRows.length : 0) +
+    offers.filter((o) => o.status === 'accepted' && o.end_at != null && o.end_at < todayKey).length +
+    campaigns.filter((c) => c.status === 'completed').length;
+  const UNLOCK_AT = 5;
+
+  if (completedCount < UNLOCK_AT) {
+    return (
+      <AppShell page="Insights">
+        <div className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
+          Hawkeye · insights · {monthLabel}
+        </div>
+        <h1 className="mt-2 font-serif text-[46px] font-medium leading-[1.04] tracking-[-0.02em] text-ink">
+          Insights.
+        </h1>
+        <section className="mx-auto mt-10 max-w-[520px] rounded-[18px] border border-line bg-panel p-9 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-tint text-accent-dark">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+              <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+            </svg>
+          </div>
+          <h2 className="mt-4 font-serif text-[28px] font-medium leading-[1.15] text-ink">
+            Insights unlock at {UNLOCK_AT} completed campaigns.
+          </h2>
+          <p className="mt-2.5 text-[15px] leading-[1.55] text-muted">
+            Kovio Intelligence needs a few runs to find real patterns — dayparts, locations and creative
+            that actually move attention. Free-trial campaigns count.
+          </p>
+          {/* progress */}
+          <div className="mt-6">
+            <div className="flex h-[10px] overflow-hidden rounded-full bg-bg">
+              <div
+                className="rounded-full bg-accent transition-all"
+                style={{ width: `${Math.min(100, (completedCount / UNLOCK_AT) * 100)}%` }}
+              />
+            </div>
+            <div className="mt-2 font-mono text-[12px] uppercase tracking-[0.1em] text-muted">
+              {completedCount} of {UNLOCK_AT} campaigns complete
+            </div>
+          </div>
+          <Link
+            href="/campaigns/place"
+            className="mt-6 inline-flex items-center rounded-[11px] bg-accent px-6 py-[13px] text-[15px] text-white transition-colors hover:bg-accent-dark"
+          >
+            + Start a campaign
+          </Link>
+        </section>
+      </AppShell>
+    );
+  }
 
   // No campaigns OR no verified data yet → no insights: an empty report with
   // zeroed charts reads as broken, not professional.
