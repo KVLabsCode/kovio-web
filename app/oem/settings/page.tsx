@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/server';
 import AppShell from '@/components/AppShell';
@@ -10,7 +11,7 @@ import type { MyOemTerms } from '@/lib/offers';
 // when/where your robots can run them.
 export default async function OemSettingsPage() {
   const me = await api.oemMe();
-  if (me.error?.status === 404) redirect('/oem/onboarding');
+  if (me.error?.status === 404) await redirectMissingOrg('oem');
   if (me.error?.status === 403) redirect('/dashboard');
 
   const supabase = await createClient();

@@ -6,7 +6,7 @@ import AdminShowcase from '@/components/AdminShowcase';
 import InviteControl from '@/components/InviteControl';
 import ShowcaseResults from '@/components/ShowcaseResults';
 import { ViewAsButton } from '@/components/ViewAsControls';
-import type { AdminAdvertiserOrg } from '@/components/AdminAdvertisers';
+import { DeleteOrgButton, RenameOrg, type AdminAdvertiserOrg } from '@/components/AdminAdvertisers';
 import type { ShowcaseCampaign } from '@/lib/showcase';
 
 // Dedicated onboarding builder for one prospect advertiser: upload footage,
@@ -52,6 +52,7 @@ export default async function AdvertiserBuilderPage({
           <div>
             <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">ADVERTISER ONBOARDING</p>
             <h1 className="mt-1 font-serif text-h1 text-ink">{org.name}.</h1>
+            <div className="mt-1"><RenameOrg orgId={org.org_id} name={org.name} /></div>
             <p className="mt-1 text-sm text-ink-2">
               {org.member_emails.length > 0
                 ? `Claimed by ${org.member_emails.join(', ')}`
@@ -106,6 +107,12 @@ export default async function AdvertiserBuilderPage({
           </p>
           <div className="rounded-lg border border-border-soft bg-card p-4">
             <InviteControl orgId={org.org_id} pendingInvite={org.pending_invite} who="advertiser" />
+          </div>
+
+          {/* danger zone */}
+          <div className="mt-10 rounded-lg border border-danger/30 p-4">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-danger">Danger zone</div>
+            <DeleteOrgButton orgId={org.org_id} name={org.name} />
           </div>
         </section>
       </main>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/server';
 import AppShell from '@/components/AppShell';
@@ -17,7 +18,7 @@ export default async function CampaignsPage({
   const { paid, payment } = await searchParams;
 
   const me = await api.me();
-  if (me.error?.status === 404) redirect('/onboarding');
+  if (me.error?.status === 404) await redirectMissingOrg('advertiser');
   if (me.error?.status === 403 && me.error.code === 'wrong_user_kind') redirect('/oem/campaigns');
 
   const supabase = await createClient();

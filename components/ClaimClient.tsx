@@ -60,6 +60,10 @@ export default function ClaimClient({ token }: { token: string }) {
     e.preventDefault();
     setBusy(true);
     setError('');
+    // Survive Supabase's Site-URL fallback: if the magic link drops ?next=, the
+    // root router reads this cookie and brings them back here to finish the
+    // claim instead of pushing a fresh, org-less account into onboarding.
+    document.cookie = `kovio_claim_token=${encodeURIComponent(token)}; path=/; max-age=3600; samesite=lax`;
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -88,6 +92,8 @@ export default function ClaimClient({ token }: { token: string }) {
       else setError('Could not claim the account. Please try again.');
       return;
     }
+    // Claim complete — the intent cookie has done its job.
+    document.cookie = 'kovio_claim_token=; path=/; max-age=0';
     const claimed = Array.isArray(data) ? data[0] : data;
     router.push(claimed?.kind === 'advertiser' ? '/dashboard' : '/oem/dashboard');
     router.refresh();

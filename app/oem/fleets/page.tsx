@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { formatCount, formatMoney } from '@/lib/format';
 import AppShell from '@/components/AppShell';
@@ -12,7 +13,7 @@ const btnRust =
 
 export default async function OemFleetsPage() {
   const { data, error } = await api.oemFleets();
-  if (error?.status === 404) redirect('/onboarding');
+  if (error?.status === 404) await redirectMissingOrg('oem');
   if (error?.status === 403) redirect('/dashboard');
   if (error || !data) {
     return (

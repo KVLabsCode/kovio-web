@@ -69,6 +69,114 @@ export function NewOrgControl({ kind, label }: { kind: 'advertiser' | 'oem'; lab
   );
 }
 
+// Inline org rename: pencil → input → save.
+export function RenameOrg({ orgId, name }: { orgId: string; name: string }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!value.trim() || value.trim() === name) {
+      setEditing(false);
+      return;
+    }
+    setBusy(true);
+    const supabase = createClient();
+    await supabase.rpc('kovio_admin_rename_org', { p_org_id: orgId, p_name: value.trim() });
+    setBusy(false);
+    setEditing(false);
+    router.refresh();
+  }
+
+  if (!editing) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-sm font-medium text-ink">{name}</span>
+        <button
+          onClick={() => {
+            setValue(name);
+            setEditing(true);
+          }}
+          aria-label={`Rename ${name}`}
+          className="text-ink-3 transition-colors hover:text-ink"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+            <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3Z" strokeLinejoin="round" />
+            <path d="m13.5 6.5 3 3" />
+          </svg>
+        </button>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            void save();
+          }
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        autoFocus
+        className="w-44 rounded-md border border-border-soft bg-card px-2 py-1 text-sm text-ink outline-none focus:border-rust"
+      />
+      <button onClick={save} disabled={busy} className="text-xs text-rust hover:text-rust-dark disabled:opacity-50">
+        {busy ? '…' : 'Save'}
+      </button>
+      <button onClick={() => setEditing(false)} disabled={busy} className="text-xs text-ink-3 hover:text-ink">
+        Cancel
+      </button>
+    </span>
+  );
+}
+
+// Delete an org + its app data (blocked when real activity exists).
+export function DeleteOrgButton({ orgId, name, small }: { orgId: string; name: string; small?: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function del() {
+    if (!confirm(`Delete ${name} and all its campaigns, showcases, offers and claim links? This can't be undone.`)) return;
+    setBusy(true);
+    setError('');
+    const supabase = createClient();
+    const { error } = await supabase.rpc('kovio_admin_delete_org', { p_org_id: orgId });
+    setBusy(false);
+    if (error) {
+      setError(
+        error.message.includes('org_has_activity')
+          ? 'This org has real activity (impressions/transactions) — not deletable from here.'
+          : 'Could not delete.',
+      );
+      return;
+    }
+    router.push('/admin');
+    router.refresh();
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        onClick={del}
+        disabled={busy}
+        className={
+          small
+            ? 'text-xs text-danger transition-opacity hover:opacity-80 disabled:opacity-40'
+            : 'rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10 disabled:opacity-40'
+        }
+      >
+        {busy ? 'Deleting…' : small ? 'Delete' : `Delete ${name}`}
+      </button>
+      {error && <span className="text-xs text-danger">{error}</span>}
+    </span>
+  );
+}
+
 // Advertiser orgs with their accounts + a claim-link control each — so a brand
 // like Pylon can be set up here and handed over via /claim/<token>.
 export default function AdminAdvertisers({ advertisers }: { advertisers: AdminAdvertiserOrg[] }) {
@@ -81,7 +189,7 @@ export default function AdminAdvertisers({ advertisers }: { advertisers: AdminAd
         <div key={a.org_id} className="rounded-lg border border-border-soft bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-3">
-              <span className="text-sm font-medium text-ink">{a.name}</span>
+              <RenameOrg orgId={a.org_id} name={a.name} />
               {a.member_emails.length > 0 ? (
                 <span className="rounded-full bg-good/10 px-2.5 py-1 text-xs text-good">
                   ✓ Claimed by {a.member_emails.join(', ')}

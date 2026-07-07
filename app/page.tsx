@@ -15,10 +15,16 @@ export default async function Home() {
   // OEM onboarding (intent cookie set by /oem/login), everyone else →
   // advertiser onboarding.
   if (error?.status === 404) {
+    const jar = await cookies();
+    // A claim in flight beats everything: the magic link's ?next= can be
+    // dropped by Supabase's Site-URL fallback — carry them back to finish
+    // claiming instead of starting a fresh onboarding.
+    const claimToken = jar.get('kovio_claim_token')?.value;
+    if (claimToken) redirect(`/claim/${encodeURIComponent(claimToken)}`);
     const supabase = await createClient();
     const { data: isAdmin } = await supabase.rpc('kovio_is_admin');
     if (isAdmin) redirect('/admin');
-    const kind = (await cookies()).get('kovio_onboard_kind')?.value;
+    const kind = jar.get('kovio_onboard_kind')?.value;
     redirect(kind === 'oem' ? '/oem/onboarding' : '/onboarding');
   }
 

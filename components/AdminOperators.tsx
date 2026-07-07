@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import InviteControl from '@/components/InviteControl';
+import { DeleteOrgButton } from '@/components/AdminAdvertisers';
 import { ViewAsButton } from '@/components/ViewAsControls';
 import { createClient } from '@/lib/supabase/client';
 import OemSettingsForm from '@/components/OemSettingsForm';
@@ -57,7 +58,7 @@ export default function AdminOperators({ operators }: { operators: AdminOperator
                   : 'No account associated — assign one from the Users table'}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <ViewAsButton orgId={op.org_id} />
               <button
                 onClick={() => toggle(op.org_id)}
@@ -65,6 +66,7 @@ export default function AdminOperators({ operators }: { operators: AdminOperator
               >
                 {openId === op.org_id ? 'Close' : 'Edit settings'}
               </button>
+              <DeleteOrgButton orgId={op.org_id} name={op.name} small />
             </div>
           </div>
 

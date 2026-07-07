@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { formatCount, formatMoney, formatRelative, formatPct } from '@/lib/format';
 import AppShell from '@/components/AppShell';
@@ -36,7 +37,7 @@ export default async function OemDashboardPage({
   const activeRange = RANGES.includes(range ?? '') ? range! : '28d';
 
   const [dash, me] = await Promise.all([api.oemDashboard(), api.oemMe()]);
-  if (dash.error?.status === 404) redirect('/onboarding');
+  if (dash.error?.status === 404) await redirectMissingOrg('oem');
   if (dash.error?.status === 403) redirect('/dashboard'); // wrong kind → advertiser side
   if (dash.error || !dash.data) {
     return (

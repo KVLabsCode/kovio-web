@@ -54,6 +54,25 @@ function Row({ user, orgs }: { user: AdminUserRow; orgs: AdminOrg[] }) {
     router.refresh();
   }
 
+  async function deleteUser() {
+    if (
+      !confirm(
+        `Delete ${user.email}? Their placed campaigns, comments and links are removed too. This can't be undone.`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError('');
+    const supabase = createClient();
+    const { error } = await supabase.rpc('kovio_admin_delete_user', { p_email: user.email });
+    setBusy(false);
+    if (error) {
+      setError(error.message.includes('cannot_delete_admin') ? 'That account is a Kovio admin.' : 'Could not delete.');
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <tr className="border-t border-border-soft">
       <td className="px-4 py-2.5 text-ink">{user.email}</td>
@@ -82,6 +101,13 @@ function Row({ user, orgs }: { user: AdminUserRow; orgs: AdminOrg[] }) {
             className="rounded-md bg-rust px-3 py-1.5 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40"
           >
             {busy ? 'Assigning…' : 'Assign'}
+          </button>
+          <button
+            onClick={deleteUser}
+            disabled={busy}
+            className="text-xs text-danger transition-opacity hover:opacity-80 disabled:opacity-40"
+          >
+            Delete
           </button>
         </div>
         {error && <p className="mt-1 text-xs text-danger">{error}</p>}

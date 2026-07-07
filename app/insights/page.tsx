@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { attentionRate, formatCount, formatPct } from '@/lib/format';
 import type { Campaign } from '@/lib/types';
@@ -22,7 +23,7 @@ export default async function InsightsPage({
   const { campaign: campaignId } = await searchParams;
   const [camps, dash] = await Promise.all([api.campaigns(), api.dashboard()]);
 
-  if (dash.error?.status === 404) redirect('/onboarding');
+  if (dash.error?.status === 404) await redirectMissingOrg('advertiser');
   if (dash.error || !dash.data) {
     return (
       <AppShell page="Insights">

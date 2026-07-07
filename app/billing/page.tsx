@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import type { Campaign } from '@/lib/types';
@@ -31,7 +32,7 @@ const newCampaignBtn = (
 export default async function BillingPage() {
   const [me, dash, camps] = await Promise.all([api.me(), api.dashboard(), api.campaigns()]);
 
-  if (me.error?.status === 404) redirect('/onboarding');
+  if (me.error?.status === 404) await redirectMissingOrg('advertiser');
   if (me.error || !me.data) {
     return (
       <AppShell page="Billing">

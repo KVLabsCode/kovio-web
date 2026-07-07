@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/server';
 import AppShell from '@/components/AppShell';
@@ -13,7 +14,7 @@ import type { IncomingOffer } from '@/lib/offers';
 export default async function OemCampaignsPage() {
   // Reuse the existing onboarding / wrong-kind guards.
   const { error } = await api.oemDisplays();
-  if (error?.status === 404) redirect('/oem/onboarding');
+  if (error?.status === 404) await redirectMissingOrg('oem');
   if (error?.status === 403) redirect('/dashboard');
 
   const supabase = await createClient();

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { redirectMissingOrg } from '@/lib/org-redirect';
 import { api } from '@/lib/api';
 import { formatCount, formatMoney, formatPct, attentionRate } from '@/lib/format';
 import { EngagementFunnel } from '@/components/EngagementFunnel';
@@ -172,7 +173,7 @@ export default async function DashboardPage({
 
   const [dash, camps, me] = await Promise.all([api.dashboard(), api.campaigns(), api.me()]);
 
-  if (dash.error?.status === 404) redirect('/onboarding');
+  if (dash.error?.status === 404) await redirectMissingOrg('advertiser');
   if (dash.error || !dash.data) {
     return (
       <AppShell page="Overview">

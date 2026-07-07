@@ -194,6 +194,20 @@ function Row({ offer, operators }: { offer: AdminOffer; operators: AdminOperator
         >
           {editing ? 'Close edit' : 'Edit offer'}
         </button>
+        <button
+          onClick={async () => {
+            if (!confirm(`Delete the campaign “${offer.name}” and its comments?`)) return;
+            setBusy(true);
+            const supabase = createClient();
+            await supabase.rpc('kovio_admin_delete_offer', { p_offer_id: offer.id });
+            setBusy(false);
+            router.refresh();
+          }}
+          disabled={busy}
+          className="text-xs text-danger transition-opacity hover:opacity-80 disabled:opacity-40"
+        >
+          Delete
+        </button>
         {offer.target_oem_name && !changed && (
           <span className="text-xs text-ink-2">Currently with {offer.target_oem_name}</span>
         )}
