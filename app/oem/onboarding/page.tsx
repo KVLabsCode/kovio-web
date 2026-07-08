@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { apiClient } from '@/lib/api-client';
 import { KovioMark } from '@/components/KovioMark';
 
@@ -29,6 +30,18 @@ const VALUE_PROPS: Array<{ title: string; body: string }> = [
 
 export default function OemOnboardingPage() {
   const router = useRouter();
+  // Staff accounts must never onboard as advertiser/operator — completing this
+  // form would convert the admin account into an org member (which is exactly
+  // how an admin once got stranded in a test org). Bounce them to /admin.
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase.rpc('kovio_is_admin');
+      if (data) router.replace('/admin');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [company, setCompany] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
