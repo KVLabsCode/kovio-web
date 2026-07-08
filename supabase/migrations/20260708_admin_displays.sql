@@ -1,0 +1,4 @@
+-- Admin-managed custom displays (creative -> /display/<code> link).
+-- Full bodies identical to applied migration 'admin_displays':
+-- kovio_admin_displays(), kovio_admin_create_display(uuid,text,jsonb,int),
+-- kovio_admin_set_display_status(uuid,text), kovio_admin_delete_display(uuid).

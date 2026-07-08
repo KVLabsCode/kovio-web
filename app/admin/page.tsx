@@ -4,6 +4,7 @@ import { KovioMark } from '@/components/KovioMark';
 import AdminOffers, { type AdminOffer } from '@/components/AdminOffers';
 import AdminOperators, { type AdminOperator } from '@/components/AdminOperators';
 import AdminAdvertisers, { NewOrgControl, type AdminAdvertiserOrg } from '@/components/AdminAdvertisers';
+import AdminDisplays, { type AdminDisplay } from '@/components/AdminDisplays';
 import { ViewingBanner } from '@/components/ViewAsControls';
 import AdminUsers, { type AdminUserRow, type AdminOrg } from '@/components/AdminUsers';
 import AdminAdmins from '@/components/AdminAdmins';
@@ -67,7 +68,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes, advsRes, viewingRes] = await Promise.all([
+  const [ovRes, usersRes, campsRes, offersRes, opsRes, adminsRes, orgsRes, advsRes, viewingRes, displaysRes] = await Promise.all([
     supabase.rpc('kovio_admin_overview'),
     supabase.rpc('kovio_admin_users'),
     supabase.rpc('kovio_admin_campaigns'),
@@ -77,6 +78,7 @@ export default async function AdminPage() {
     supabase.rpc('kovio_admin_orgs'),
     supabase.rpc('kovio_admin_advertisers'),
     supabase.rpc('kovio_admin_viewing'),
+    supabase.rpc('kovio_admin_displays'),
   ]);
 
   const ov = (Array.isArray(ovRes.data) ? ovRes.data[0] : ovRes.data) as Overview | undefined;
@@ -89,6 +91,7 @@ export default async function AdminPage() {
   const advertiserOrgs = (advsRes.data as AdminAdvertiserOrg[]) ?? [];
   const viewingRow = Array.isArray(viewingRes.data) ? viewingRes.data[0] : viewingRes.data;
   const viewing = (viewingRow as { org_name: string; kind: string } | undefined) ?? null;
+  const displays = (displaysRes.data as AdminDisplay[]) ?? [];
 
   return (
     <div className="min-h-screen bg-bg text-ink">
@@ -153,6 +156,16 @@ export default async function AdminPage() {
             advertiser dashboard ready to go.
           </p>
           <AdminAdvertisers advertisers={advertiserOrgs} />
+        </section>
+
+        {/* Custom displays — creative → kovio link */}
+        <section className="mt-10">
+          <h2 className="mb-1 font-serif text-h2 text-ink">Custom displays <span className="text-ink-3">({displays.length})</span></h2>
+          <p className="mb-4 text-sm text-ink-2">
+            Upload a creative and get a Kovio link — point any robot or screen at /display/&lt;code&gt; and it
+            loops full-screen (kiosk mode, auto-refresh).
+          </p>
+          <AdminDisplays displays={displays} operators={operators} />
         </section>
 
         {/* Admin allowlist */}
