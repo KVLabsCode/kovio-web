@@ -22,9 +22,101 @@ export interface SessionInfo {
   id: string;
   robot_id: string;
   display_id: string | null;
+  campaign_id: string | null;
+  is_blended: boolean;
   status: 'recording' | 'stopped';
   started_at: string;
   ended_at: string | null;
+}
+
+// --- V2: audience metrics, playlist, demo library, reports -----------------
+
+export interface SessionCampaign {
+  id: string;
+  name: string;
+  advertiser: string;
+  status: string;
+  enabled: boolean;
+}
+
+export interface SensorHealth {
+  lidar_ok: boolean;
+  lidar_hz: number;
+  depth_ok: boolean;
+  age_seconds: number | null;
+}
+
+export interface SessionMetrics {
+  session_id: string;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
+  is_blended: boolean;
+  campaign_id: string | null;
+  reach_unique: number;
+  passersby_gross: number;
+  dwell_paused_plus: number;
+  dwell_engaged_plus: number;
+  dwell_deep: number;
+  close_approaches: number;
+  sensor: SensorHealth | null;
+  degraded: boolean;
+}
+
+export interface DisplayItem {
+  id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  duration_seconds: number | null;
+  position: number;
+}
+
+export interface DisplayItems {
+  display_id: string;
+  name: string;
+  default_image_seconds: number;
+  items: DisplayItem[];
+}
+
+export interface DemoCreative {
+  id: string;
+  org_id: string | null;
+  label: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  default_seconds: number;
+  is_demo: boolean;
+}
+
+export interface AudienceSessionRow {
+  session_id: string;
+  started_at: string;
+  ended_at: string | null;
+  is_blended: boolean;
+  campaign_id: string | null;
+  display_id: string | null;
+  reach_unique: number;
+  passersby_gross: number;
+  dwell_engaged_plus: number;
+  dwell_deep: number;
+  close_approaches: number;
+}
+
+export interface AudienceRollup {
+  scope: 'campaign' | 'display';
+  scope_id: string;
+  label: string;
+  blended: boolean;
+  creative_count: number | null;
+  from_ts: string | null;
+  to_ts: string | null;
+  reach_unique: number;
+  passersby_gross: number;
+  dwell_paused_plus: number;
+  dwell_engaged_plus: number;
+  dwell_deep: number;
+  close_approaches: number;
+  sessions: AudienceSessionRow[];
 }
 
 export interface SessionSummary {
@@ -76,10 +168,14 @@ export const sessionApi = {
   robots: () =>
     req<{ robots: SessionRobot[]; online_threshold_seconds: number }>('/session/v1/robots'),
 
-  start: (robotId: string, displayId: string) =>
+  start: (robotId: string, displayId: string, campaignId?: string | null) =>
     req<SessionInfo>('/session/v1/start', {
       method: 'POST',
-      body: JSON.stringify({ robot_id: robotId, display_id: displayId }),
+      body: JSON.stringify({
+        robot_id: robotId,
+        display_id: displayId,
+        campaign_id: campaignId || null,
+      }),
     }),
 
   stop: (sessionId: string) =>
@@ -95,6 +191,54 @@ export const sessionApi = {
 
   summary: (sessionId: string) =>
     req<SessionSummary>(`/session/v1/summary?session_id=${encodeURIComponent(sessionId)}`),
+
+  // V2 live tiles: unique reach / dwell tiers / close approaches + sensor health.
+  metrics: (sessionId: string) =>
+    req<SessionMetrics>(`/session/v1/metrics?session_id=${encodeURIComponent(sessionId)}`),
+
+  // Start-time campaign picker — server already limits to the key org.
+  campaigns: () => req<SessionCampaign[]>('/session/v1/campaigns'),
+
+  demoCreatives: () => req<DemoCreative[]>('/session/v1/demo-creatives'),
+
+  items: (displayId: string) =>
+    req<DisplayItems>(`/display/v1/${encodeURIComponent(displayId)}/items`),
+
+  addItem: (displayId: string, item: { media_url: string; media_type: string; duration_seconds?: number | null }) =>
+    req<DisplayItems>(`/display/v1/${encodeURIComponent(displayId)}/items`, {
+      method: 'POST',
+      body: JSON.stringify(item),
+    }),
+
+  patchItem: (displayId: string, itemId: string, durationSeconds: number | null) =>
+    req<DisplayItems>(
+      `/display/v1/${encodeURIComponent(displayId)}/items/${encodeURIComponent(itemId)}`,
+      { method: 'PATCH', body: JSON.stringify({ duration_seconds: durationSeconds }) }
+    ),
+
+  deleteItem: (displayId: string, itemId: string) =>
+    req<DisplayItems>(
+      `/display/v1/${encodeURIComponent(displayId)}/items/${encodeURIComponent(itemId)}`,
+      { method: 'DELETE' }
+    ),
+
+  reorderItems: (displayId: string, itemIds: string[]) =>
+    req<DisplayItems>(`/display/v1/${encodeURIComponent(displayId)}/items/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ item_ids: itemIds }),
+    }),
+
+  loadPreset: (displayId: string, creativeIds: string[]) =>
+    req<DisplayItems>(`/display/v1/${encodeURIComponent(displayId)}/load-preset`, {
+      method: 'POST',
+      body: JSON.stringify({ creative_ids: creativeIds }),
+    }),
+
+  displayAudience: (displayId: string) =>
+    req<AudienceRollup>(`/display/v1/${encodeURIComponent(displayId)}/audience`),
+
+  campaignAudience: (campaignId: string) =>
+    req<AudienceRollup>(`/campaign/v1/${encodeURIComponent(campaignId)}/audience`),
 
   // The frame endpoint needs the Bearer header, which an <img src> can't send —
   // fetch the JPEG as a blob and hand back an object URL (caller revokes it).
