@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { AdminOperator } from '@/components/AdminOperators';
+import AdminSessionPanel from '@/components/AdminSessionPanel';
 
 export interface AdminDisplay {
   id: string;
@@ -42,6 +43,8 @@ export default function AdminDisplays({
   const [error, setError] = useState('');
   const [createdLink, setCreatedLink] = useState('');
   const [copied, setCopied] = useState('');
+  // Which display row has its live-session panel expanded (one at a time).
+  const [sessionFor, setSessionFor] = useState<string | null>(null);
 
   async function copy(text: string) {
     try {
@@ -198,7 +201,8 @@ export default function AdminDisplays({
           {displays.map((d) => {
             const link = `/display/${d.code}`;
             return (
-              <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-soft bg-card px-4 py-3">
+              <div key={d.id} className="rounded-lg border border-border-soft bg-card px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-ink">{d.name}</span>
@@ -218,6 +222,12 @@ export default function AdminDisplays({
                   <a href={link} target="_blank" rel="noopener noreferrer" className="rounded-md border border-border-soft px-2.5 py-1.5 text-xs text-ink hover:bg-page">
                     Open
                   </a>
+                  <button
+                    onClick={() => setSessionFor(sessionFor === d.id ? null : d.id)}
+                    className={`rounded-md border px-2.5 py-1.5 text-xs hover:bg-page ${sessionFor === d.id ? 'border-rust text-rust' : 'border-border-soft text-ink'}`}
+                  >
+                    {sessionFor === d.id ? 'Hide session' : 'Session'}
+                  </button>
                   <button onClick={() => toggle(d)} className="rounded-md border border-border-soft px-2.5 py-1.5 text-xs text-ink hover:bg-page">
                     {d.status === 'active' ? 'Pause' : 'Activate'}
                   </button>
@@ -225,6 +235,8 @@ export default function AdminDisplays({
                     Delete
                   </button>
                 </div>
+                </div>
+                {sessionFor === d.id && <AdminSessionPanel displayId={d.id} />}
               </div>
             );
           })}
