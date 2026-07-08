@@ -9,7 +9,19 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) {
+      // Staff accounts always land in the control room when no explicit
+      // destination was requested — regardless of Google vs magic link, and
+      // regardless of any org a view-as session left attached. Keeps admin
+      // accounts out of advertiser/OEM onboarding and test-org dashboards.
+      if (next === '/') {
+        try {
+          const { data: isAdmin } = await supabase.rpc('kovio_is_admin');
+          if (isAdmin) return NextResponse.redirect(`${origin}/admin`);
+        } catch {}
+      }
+      return NextResponse.redirect(`${origin}${next}`);
+    }
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth`);
