@@ -167,7 +167,7 @@ export default function LoginPage() {
               </h2>
               <p className="mt-2 text-[16px] text-muted">
                 {isSignup
-                  ? 'Launch your brand on the Robot.com fleet in minutes.'
+                  ? 'Launch your brand on robot fleets in minutes.'
                   : 'Sign in to manage your campaigns.'}
               </p>
 

@@ -135,7 +135,7 @@ export default async function InsightsPage({
           </div>
           <p className="mx-auto mt-2 max-w-[440px] text-[16px] text-muted">
             {campaigns.length === 0
-              ? 'Once your first campaign runs on the Robot.com fleet, Kovio Intelligence analyzes its verified attention here.'
+              ? 'Once your first campaign runs on the robot fleet, Kovio Intelligence analyzes its verified attention here.'
               : 'Your campaign hasn’t served yet. Insights appear as soon as robots start logging verified attention.'}
           </p>
           {campaigns.length === 0 && (

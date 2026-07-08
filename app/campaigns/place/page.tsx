@@ -13,7 +13,7 @@ export default function PlaceCampaignPage() {
           New campaign.
         </h1>
         <p className="text-[19px] text-muted">
-          Launch your creative on the Robot.com fleet. The operator reviews the content, and it runs on
+          Launch your creative on a robot fleet. The operator reviews the content, and it runs on
           real robots once approved.
         </p>
       </div>

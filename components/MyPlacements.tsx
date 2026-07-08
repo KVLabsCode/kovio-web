@@ -121,7 +121,7 @@ export default function MyPlacements({ offers }: { offers: MyOffer[] }) {
       <div className="mt-8 rounded-[18px] border border-dashed border-line-strong py-16 text-center">
         <p className="font-serif text-[28px] text-ink">No campaigns yet</p>
         <p className="mt-2 text-[16px] text-muted">
-          Start a campaign on the Robot.com fleet to see its status and metrics here.
+          Start a campaign on the robot fleet to see its status and metrics here.
         </p>
         <Link href="/campaigns/place" className="mt-6 inline-flex rounded-[11px] bg-accent px-6 py-3 text-[15px] text-white transition-colors hover:bg-accent-dark">
           + Start a campaign

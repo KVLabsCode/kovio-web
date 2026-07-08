@@ -28,7 +28,7 @@ const VALUE_PROPS: Array<{ title: string; body: string }> = [
 ];
 
 const INCLUDED: Array<React.ReactNode> = [
-  <>Campaigns on the <span className="font-semibold text-ink">Robot.com fleet</span> — real robots on real streets.</>,
+  <>Campaigns on <span className="font-semibold text-ink">robot fleets</span> — real robots on real streets.</>,
   <><span className="font-semibold text-ink">Verified attention</span>, measured frame-by-frame on the robot.</>,
   <>Full reporting with <span className="font-semibold text-ink">AI analysis</span> under Insights.</>,
   <><span className="font-semibold text-ink">Upfront pricing</span> — the fleet’s day rate × your dates, paid once via Stripe.</>,
@@ -83,7 +83,7 @@ export default function OnboardingPage() {
         <div className="inline-flex items-center gap-[9px] rounded-full bg-[#332c24] px-4 py-2 text-[#f1ead9]">
           <span className="k-pulse h-[7px] w-[7px] rounded-full bg-[#5cbe85]" />
           <span className="font-mono text-[12px] uppercase tracking-[0.1em]">
-            Network online · Robot.com fleet
+            Network online · robot fleets
           </span>
         </div>
 

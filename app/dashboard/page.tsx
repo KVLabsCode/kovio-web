@@ -11,9 +11,6 @@ import ShowcaseResults from '@/components/ShowcaseResults';
 import { createClient as createSupabase } from '@/lib/supabase/server';
 import type { ShowcaseCampaign } from '@/lib/showcase';
 import RangePills from '@/components/RangePills';
-import LiveActivityHero from '@/components/LiveActivityHero';
-import FleetCountdown from '@/components/FleetCountdown';
-import { FLEET_GO_LIVE, goLiveDateLabel } from '@/lib/fleet-clips';
 
 const RANGES = ['24H', '7D', '30D', 'ALL'];
 
@@ -204,8 +201,7 @@ export default async function DashboardPage({
     return (
       <AppShell page="Overview" action={newCampaignBtn}>
         <OnboardingTour role="advertiser" />
-        <LiveActivityHero />
-        <div className="mt-7 font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
+        <div className="font-mono text-[12px] uppercase tracking-[0.16em] text-faint">
           {dateLabel(now)}
         </div>
         <h1 className="mt-2 font-serif text-[30px] font-medium leading-[1.05] tracking-[-0.02em] text-ink sm:text-[38px] lg:text-[44px]">
@@ -214,12 +210,12 @@ export default async function DashboardPage({
         <p className="mt-3 max-w-[640px] text-[18px] leading-[1.5] text-muted">
           {placements > 0 ? (
             <>
-              Your campaign is with the <span className="text-ink">Robot.com fleet</span> for review —
+              Your campaign is with the <span className="text-ink">robot fleet</span> for review —
               verified metrics stream in here the moment it goes live.
             </>
           ) : (
             <>
-              Put your brand on the <span className="text-ink">Robot.com fleet</span> — real robots on
+              Put your brand on <span className="text-ink">robot fleets</span> — real robots on
               real streets, priced upfront, with every look verified on-device.
             </>
           )}
@@ -435,11 +431,10 @@ export default async function DashboardPage({
               <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center">
                 <span className="inline-flex items-center gap-2 rounded-full bg-tint px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-accent-dark">
                   <span className="k-pulse h-1.5 w-1.5 rounded-full bg-accent" />
-                  Going live {goLiveDateLabel(FLEET_GO_LIVE)}
+                  Standby
                 </span>
-                <FleetCountdown className="text-[15px] text-ink" />
                 <p className="max-w-[250px] text-[13px] leading-[1.45] text-faint">
-                  Verified events stream here the moment your campaign hits the live fleet.
+                  Verified events stream here the moment your campaign runs on the fleet.
                 </p>
               </div>
             ) : (

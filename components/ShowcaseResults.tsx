@@ -267,7 +267,7 @@ export default function ShowcaseResults({
                 Your results are ready.
               </div>
               <p className="mt-2 text-[14px] leading-[1.5] text-muted">
-                {campaigns.length} campaign{campaigns.length === 1 ? '' : 's'} ran on the Robot.com fleet —
+                {campaigns.length} campaign{campaigns.length === 1 ? '' : 's'} ran on the robot fleet —
                 claim your {orgName} dashboard below to reveal them and launch for real.
               </p>
               <div className="mt-4">

@@ -43,7 +43,7 @@ export default async function CampaignsPage({
           <p className="text-[19px] text-muted">
             {needsYou > 0
               ? `${needsYou} campaign${needsYou === 1 ? '' : 's'} need your confirmation — the operator proposed new dates.`
-              : 'Your campaigns on the Robot.com fleet, and where each one stands.'}
+              : 'Your campaigns on robot fleets, and where each one stands.'}
           </p>
         </div>
         <Link

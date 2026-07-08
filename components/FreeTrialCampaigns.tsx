@@ -15,7 +15,7 @@ export default function FreeTrialCampaigns({ campaigns }: { campaigns: ShowcaseC
         </span>
       </div>
       <p className="mb-4 max-w-2xl text-[14px] text-muted">
-        Kovio ran these on the Robot.com fleet on us — no charge, real streets.{' '}
+        Kovio ran these on the robot fleet on us — no charge, real streets.{' '}
         <Link href="/dashboard" className="text-accent-dark hover:text-accent">See the full report →</Link>
       </p>
 
@@ -29,7 +29,7 @@ export default function FreeTrialCampaigns({ campaigns }: { campaigns: ShowcaseC
                 <div className="min-w-0">
                   <div className="truncate text-[17px] font-medium text-ink">{c.name}</div>
                   <div className="mt-0.5 text-[14px] text-muted">
-                    Robot.com fleet
+                    Robot fleet
                     {c.location_label ? ` · ${c.location_label}` : ''}
                     {c.duration_label ? ` · ${c.duration_label}` : ''}
                   </div>

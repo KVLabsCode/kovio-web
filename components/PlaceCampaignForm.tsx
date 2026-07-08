@@ -551,7 +551,7 @@ export default function PlaceCampaignForm() {
             <li><span className="font-semibold">3.</span> Once approved it runs on real robots — track status under Campaigns.</li>
           </ol>
           <p className="mt-4 text-[13px] text-muted">
-            More fleets are coming to Kovio soon. For now, campaigns run on the Robot.com fleet.
+            More fleets are coming to Kovio soon. For now, campaigns run on our launch robot fleet.
           </p>
         </div>
       </aside>

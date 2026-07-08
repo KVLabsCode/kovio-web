@@ -21,7 +21,7 @@ const STEPS: Record<'advertiser' | 'oem', Step[]> = {
     },
     {
       eyebrow: 'Step 1',
-      title: 'Launch a campaign on Robot.com.',
+      title: 'Launch a campaign on robot fleets.',
       body: 'Name it, drop a creative, pick your dates — the price is set upfront by the fleet’s day rate, paid once via Stripe. It runs on real robots once the fleet approves.',
       cta: { label: 'Create a campaign →', href: '/campaigns/place' },
     },
