@@ -60,6 +60,16 @@ export default function OemLoginPage() {
     setError('');
     markOemIntent();
     const supabase = createClient();
+    // Kovio staff accounts sign in at /admin/login only — signing in here has
+    // repeatedly stranded the admin account in test-org dashboards.
+    {
+      const { data: isStaff } = await supabase.rpc('kovio_is_admin_email', { p_email: email.trim() });
+      if (isStaff) {
+        setLoading(false);
+        setError('This is a Kovio staff account — use the admin sign-in at /admin/login.');
+        return;
+      }
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
