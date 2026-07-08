@@ -86,8 +86,15 @@ export default function OnboardingPage() {
           <KovioMark className="h-[22px] w-[22px] text-accent" />
           <span className="font-mono text-[16px] tracking-[0.18em]">KOVIO</span>
         </div>
-        <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
-          Step 1 of 2 · Set up
+        <div className="flex items-center gap-4">
+          <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-faint">
+            Step 1 of 2 · Set up
+          </div>
+          <form action="/auth/logout" method="post">
+            <button className="rounded-[9px] border border-line-strong px-3.5 py-1.5 text-[13px] text-muted transition-colors hover:border-accent hover:text-ink">
+              Sign out
+            </button>
+          </form>
         </div>
       </div>
 

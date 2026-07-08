@@ -74,10 +74,17 @@ export default function OemOnboardingPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-6 py-16">
       <div className="w-full max-w-[1040px]">
-        <div className="flex items-center gap-[11px]">
-          <KovioMark className="h-6 w-6 text-accent" />
-          <span className="font-mono text-[15px] tracking-[0.18em] text-ink">KOVIO</span>
-          <span className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">/ for fleets</span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-[11px]">
+            <KovioMark className="h-6 w-6 text-accent" />
+            <span className="font-mono text-[15px] tracking-[0.18em] text-ink">KOVIO</span>
+            <span className="font-mono text-[13px] uppercase tracking-[0.18em] text-faint">/ for fleets</span>
+          </div>
+          <form action="/auth/logout" method="post">
+            <button className="rounded-[9px] border border-line-strong px-3.5 py-1.5 text-[13px] text-muted transition-colors hover:border-accent hover:text-ink">
+              Sign out
+            </button>
+          </form>
         </div>
 
         <h1 className="mt-8 max-w-[900px] font-serif text-[clamp(40px,6vw,68px)] font-medium leading-[1.03] tracking-[-0.02em] text-ink">
