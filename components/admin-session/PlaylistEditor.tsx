@@ -34,12 +34,17 @@ function Thumb({ url, type }: { url: string; type: 'image' | 'video' }) {
 export default function PlaylistEditor({
   displayId,
   disabled,
+  live = false,
   onItems,
 }: {
   displayId: string;
-  /** Lock edits while a session is live — the loop the robot is showing must
-   *  match what the session's blended/single mode was decided on. */
+  /** No fleet key yet — the API calls can't authenticate. */
   disabled: boolean;
+  /** A session is live: edits are ALLOWED (the robot and the /display page pick
+   *  them up on their next playlist refresh) but shown with an attribution
+   *  warning instead of the old hard lock — being unable to fix an empty or
+   *  wrong loop mid-demo was worse than the attribution risk. */
+  live?: boolean;
   onItems: (payload: DisplayItems) => void;
 }) {
   const [data, setData] = useState<DisplayItems | null>(null);
@@ -48,6 +53,7 @@ export default function PlaylistEditor({
   const [showDemos, setShowDemos] = useState(false);
   const [addUrl, setAddUrl] = useState('');
   const [addType, setAddType] = useState<'image' | 'video'>('image');
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,6 +64,52 @@ export default function PlaylistEditor({
     },
     [onItems]
   );
+
+  // Upload straight from disk: store in the public creatives bucket (same
+  // pattern as the display creator above) and append as a playlist item.
+  async function handleUpload(files: FileList | null) {
+    if (!files?.length || disabled) return;
+    setError('');
+    setUploading(true);
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      for (const file of Array.from(files)) {
+        const isVid = file.type.startsWith('video');
+        if (!isVid && !file.type.startsWith('image')) {
+          setError(`${file.name}: only images and video are supported.`);
+          continue;
+        }
+        if (file.size > 100 * 1024 * 1024) {
+          setError(`${file.name}: over the 100 MB limit.`);
+          continue;
+        }
+        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `displays/admin/${Date.now()}-${safe}`;
+        const { error: upErr } = await supabase.storage.from('creatives').upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+        if (upErr) {
+          setError(upErr.message || 'Upload failed.');
+          continue;
+        }
+        const { data: pub } = supabase.storage.from('creatives').getPublicUrl(path);
+        try {
+          apply(
+            await sessionApi.addItem(displayId, {
+              media_url: pub.publicUrl,
+              media_type: isVid ? 'video' : 'image',
+            })
+          );
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Could not add the uploaded creative.');
+        }
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -200,6 +252,24 @@ export default function PlaylistEditor({
         >
           Add item
         </button>
+        <label
+          className={`cursor-pointer rounded-md border border-border-soft px-3 py-1.5 text-xs text-ink hover:bg-page ${
+            disabled || uploading ? 'pointer-events-none opacity-40' : ''
+          }`}
+        >
+          {uploading ? 'Uploading…' : '⇪ Upload'}
+          <input
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            disabled={disabled || uploading}
+            onChange={(e) => {
+              void handleUpload(e.target.files);
+              e.target.value = '';
+            }}
+          />
+        </label>
         <button
           onClick={() => void openDemos()}
           disabled={disabled}
@@ -263,7 +333,14 @@ export default function PlaylistEditor({
 
       {disabled && (
         <p className="mt-2 font-mono text-[10px] opacity-50">
-          Playlist locked while a session is live — stop the session to edit.
+          Save a fleet key above to edit the playlist.
+        </p>
+      )}
+      {live && !disabled && (
+        <p className="mt-2 rounded-md border border-rust/30 bg-rust/5 px-2.5 py-1.5 text-[11px] text-ink-2">
+          Session is live — the screen picks up playlist changes on its next refresh (~20s). If this
+          session is campaign-bound, adding creatives mixes exposure; going past one creative means
+          future sessions run blended.
         </p>
       )}
       {error && <p className="mt-2 text-xs text-danger">{error}</p>}

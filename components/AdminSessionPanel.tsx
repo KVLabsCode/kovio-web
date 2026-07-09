@@ -201,6 +201,15 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
     setBusy(true);
     setError('');
     try {
+      // A paused display serves NOTHING at /display/<code> — a live session on
+      // one reads as "creatives not showing". Ensure it's active before start.
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        await createClient().rpc('kovio_admin_set_display_status', {
+          p_id: displayId,
+          p_status: 'active',
+        });
+      } catch {}
       const campaignId =
         !blended && campaignChoice && campaignChoice !== UNATTRIBUTED ? campaignChoice : null;
       const s = await sessionApi.start(robot!.id, displayId, campaignId);
@@ -294,7 +303,7 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
       </div>
 
       {view === 'playlist' && (
-        <PlaylistEditor displayId={displayId} disabled={live || !keySaved} onItems={onPlaylistChange} />
+        <PlaylistEditor displayId={displayId} disabled={!keySaved} live={live} onItems={onPlaylistChange} />
       )}
       {view === 'report' && (keySaved ? <AudienceReport displayId={displayId} /> : (
         <p className="mt-3 text-xs text-ink-2">Set the fleet key to load the report.</p>
