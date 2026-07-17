@@ -184,6 +184,18 @@ export const sessionApi = {
       body: JSON.stringify({ session_id: sessionId }),
     }),
 
+  // Queue a line of TTS for a robot's open session. The robot speaks it on its
+  // next /current poll (~5s worst case). Requires an open session server-side.
+  speak: (robotId: string, text: string, volume?: number | null) =>
+    req<{ ok: boolean; nonce: string }>('/session/v1/speak', {
+      method: 'POST',
+      body: JSON.stringify({
+        robot_id: robotId,
+        text,
+        volume: volume ?? null,
+      }),
+    }),
+
   current: (robotExternalId: string) =>
     req<{ active: boolean; session_id: string | null; started_at: string | null }>(
       `/session/v1/current?robot_id=${encodeURIComponent(robotExternalId)}`
