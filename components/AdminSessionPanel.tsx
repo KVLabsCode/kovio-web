@@ -68,6 +68,9 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
   const [campaignChoice, setCampaignChoice] = useState('');
   const [blendedAck, setBlendedAck] = useState(false);
   const [view, setView] = useState<'session' | 'playlist' | 'report'>('session');
+  // Dashboard TTS: type a line, the robot speaks it on its next /current poll.
+  const [speakText, setSpeakText] = useState('');
+  const [speaking, setSpeaking] = useState(false);
   const mounted = useRef(true);
   const frameUrlRef = useRef<string | null>(null);
 
@@ -221,6 +224,21 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
       setError(e instanceof Error ? e.message : 'Could not start the session.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendSpeak() {
+    const text = speakText.trim();
+    if (!text || !robot || speaking) return;
+    setSpeaking(true);
+    setError('');
+    try {
+      await sessionApi.speak(robot.id, text);
+      setSpeakText('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not send the message.');
+    } finally {
+      if (mounted.current) setSpeaking(false);
     }
   }
 
@@ -441,6 +459,30 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
                   LiDAR-only (unconfirmed) until it returns.
                 </div>
               )}
+
+              {/* Dashboard TTS — type a line and the robot speaks it (~5s to
+                  land on the next /current poll). */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[11px] uppercase tracking-wider opacity-60">Say</span>
+                <input
+                  type="text"
+                  value={speakText}
+                  onChange={(e) => setSpeakText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') sendSpeak();
+                  }}
+                  maxLength={500}
+                  placeholder="type something for the robot to say…"
+                  className={`${inputCls} min-w-[220px] flex-1`}
+                />
+                <button
+                  onClick={sendSpeak}
+                  disabled={!speakText.trim() || speaking}
+                  className="rounded-md bg-rust px-4 py-1.5 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40"
+                >
+                  {speaking ? 'Sending…' : 'Speak'}
+                </button>
+              </div>
 
               {/* Live camera — latest JPEG from the in-RAM relay, ~5s cadence */}
               <div className="mt-3 overflow-hidden rounded-lg border border-border-soft bg-black">
