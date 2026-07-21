@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export interface MarketingLead {
   id: string;
-  kind: 'trial' | 'fleet';
+  kind: 'trial' | 'fleet' | 'agency';
   name: string;
   email: string;
   company: string;
@@ -53,7 +53,7 @@ export default function AdminLeads({ leads }: { leads: MarketingLead[] }) {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-ink">{l.company}</span>
               <span className={`rounded-full px-2 py-0.5 text-[11px] ${l.kind === 'trial' ? 'bg-rust/10 text-rust' : 'bg-tint text-ink-2'}`}>
-                {l.kind === 'trial' ? 'Free trial' : 'Fleet'}
+                {l.kind === 'trial' ? 'Free trial' : l.kind === 'agency' ? 'OOH agency' : 'Fleet'}
               </span>
               <span className={`rounded-full px-2 py-0.5 text-[11px] ${STATUS_STYLE[l.status]}`}>{l.status}</span>
             </div>
