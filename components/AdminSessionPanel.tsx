@@ -71,6 +71,7 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
   // Dashboard TTS: type a line, the robot speaks it on its next /current poll.
   const [speakText, setSpeakText] = useState('');
   const [speaking, setSpeaking] = useState(false);
+  const [listening, setListening] = useState(false);
   const mounted = useRef(true);
   const frameUrlRef = useRef<string | null>(null);
 
@@ -230,6 +231,24 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
       setError(e instanceof Error ? e.message : 'Could not send the message.');
     } finally {
       if (mounted.current) setSpeaking(false);
+    }
+  }
+
+  async function sendListen() {
+    if (!robot || listening) return;
+    setListening(true);
+    setError('');
+    try {
+      await sessionApi.listen(robot.id);
+      // The robot captures + transcribes on-device and replies out its speaker;
+      // the window is single-shot. Give it roughly a capture cycle before the
+      // operator can trigger another turn.
+      setTimeout(() => {
+        if (mounted.current) setListening(false);
+      }, 14000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not start listening.');
+      if (mounted.current) setListening(false);
     }
   }
 
@@ -472,6 +491,15 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
                   className="rounded-md bg-rust px-4 py-1.5 text-sm text-page transition-colors hover:bg-rust-dark disabled:opacity-40"
                 >
                   {speaking ? 'Sending…' : 'Speak'}
+                </button>
+                {/* Push-to-talk — the robot listens once, transcribes on-device,
+                    and replies out its speaker. */}
+                <button
+                  onClick={sendListen}
+                  disabled={listening}
+                  className="rounded-md border border-rust px-4 py-1.5 text-sm text-rust transition-colors hover:bg-rust hover:text-page disabled:opacity-40"
+                >
+                  {listening ? 'Listening…' : '🎤 Listen'}
                 </button>
               </div>
 

@@ -196,6 +196,14 @@ export const sessionApi = {
       }),
     }),
 
+  // Open a push-to-talk window: the robot captures mic audio once, transcribes
+  // it on-device, and replies out its speaker. Same open-session gate as speak.
+  listen: (robotId: string) =>
+    req<{ ok: boolean; nonce: string }>('/session/v1/listen', {
+      method: 'POST',
+      body: JSON.stringify({ robot_id: robotId }),
+    }),
+
   current: (robotExternalId: string) =>
     req<{ active: boolean; session_id: string | null; started_at: string | null }>(
       `/session/v1/current?robot_id=${encodeURIComponent(robotExternalId)}`
