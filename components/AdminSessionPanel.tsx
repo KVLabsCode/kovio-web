@@ -243,22 +243,24 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
     }
   }
 
-  async function sendListen() {
+  async function startConversation() {
     if (!robot || listening) return;
-    setListening(true);
     setError('');
     try {
       await sessionApi.listen(robot.id);
-      // The robot captures + transcribes on-device and replies out its speaker;
-      // the window is single-shot. Give it roughly a capture cycle before the
-      // operator can trigger another turn.
-      setTimeout(() => {
-        if (mounted.current) setListening(false);
-      }, 14000);
+      // Continuous mode: the robot keeps listening + replying until we End it.
+      if (mounted.current) setListening(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not start listening.');
-      if (mounted.current) setListening(false);
+      setError(e instanceof Error ? e.message : 'Could not start conversation.');
     }
+  }
+
+  async function endConversation() {
+    if (!robot) return;
+    try {
+      await sessionApi.conversationStop(robot.id);
+    } catch {}
+    if (mounted.current) setListening(false);
   }
 
   async function stop() {
@@ -501,15 +503,29 @@ export default function AdminSessionPanel({ displayId }: { displayId: string }) 
                 >
                   {speaking ? 'Sending…' : 'Speak'}
                 </button>
-                {/* Push-to-talk — the robot listens once, transcribes on-device,
-                    and replies out its speaker. */}
-                <button
-                  onClick={sendListen}
-                  disabled={listening}
-                  className="rounded-md border border-rust px-4 py-1.5 text-sm text-rust transition-colors hover:bg-rust hover:text-page disabled:opacity-40"
-                >
-                  {listening ? 'Listening…' : '🎤 Listen'}
-                </button>
+                {/* Continuous conversation — the robot listens, replies, and
+                    re-listens on its own until you press End. */}
+                {!listening ? (
+                  <button
+                    onClick={startConversation}
+                    className="rounded-md border border-rust px-4 py-1.5 text-sm text-rust transition-colors hover:bg-rust hover:text-page"
+                  >
+                    🎤 Talk
+                  </button>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-rust/10 px-3 py-1.5 text-sm text-rust">
+                      <span className="block h-[7px] w-[7px] animate-pulse rounded-full bg-rust" />
+                      In conversation
+                    </span>
+                    <button
+                      onClick={endConversation}
+                      className="rounded-md border border-border-soft px-4 py-1.5 text-sm text-ink-2 transition-colors hover:bg-card"
+                    >
+                      End
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Live camera — latest JPEG from the in-RAM relay, ~5s cadence */}

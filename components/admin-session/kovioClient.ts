@@ -196,10 +196,17 @@ export const sessionApi = {
       }),
     }),
 
-  // Open a push-to-talk window: the robot captures mic audio once, transcribes
-  // it on-device, and replies out its speaker. Same open-session gate as speak.
+  // Enter continuous conversation mode: the robot listens, replies, and
+  // re-listens automatically until stopped. Same open-session gate as speak.
   listen: (robotId: string) =>
     req<{ ok: boolean; nonce: string }>('/session/v1/listen', {
+      method: 'POST',
+      body: JSON.stringify({ robot_id: robotId }),
+    }),
+
+  // Leave conversation mode (the 'End' button).
+  conversationStop: (robotId: string) =>
+    req<{ ok: boolean; nonce: string }>('/session/v1/conversation/stop', {
       method: 'POST',
       body: JSON.stringify({ robot_id: robotId }),
     }),
